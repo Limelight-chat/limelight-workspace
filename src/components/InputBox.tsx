@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import { IconPlus } from "@tabler/icons-react"
 import { ArrowRightIcon } from "lucide-react"
 import {
@@ -16,9 +19,16 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 export default function InputBox() {
+    const [text, setText] = useState("")
+    const hasText = text.trim().length > 0
+
     return(
         <InputGroup>
-            <InputGroupTextarea placeholder="Ask, Search or Chat..." />
+            <InputGroupTextarea 
+              placeholder="Ask, Search or Chat..." 
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
             <InputGroupAddon align="block-end">
               <InputGroupButton
                 variant="outline"
@@ -45,11 +55,11 @@ export default function InputBox() {
               <Separator orientation="vertical" className="h-4" />
               <InputGroupButton
                 variant="default"
-                className="rounded-full"
+                className={`rounded-full transition-colors ${hasText ? 'bg-[#E67820] hover:bg-[#E67820]/90' : ''}`}
                 size="icon-xs"
-                disabled
+                disabled={!hasText}
               >
-                <ArrowRightIcon />
+                <ArrowRightIcon className={hasText ? 'text-white' : ''} />
                 <span className="sr-only">Send</span>
               </InputGroupButton>
             </InputGroupAddon>

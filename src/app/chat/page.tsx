@@ -66,7 +66,7 @@ export default function chat() {
       </div>
 
       {/* Fixed Input Box */}
-      <div className="sticky bottom-4 w-full x-6 py-4">
+      <div className="sticky bottom-0 w-full px-4 sm:px-6 py-4 bg-linear-to-t from-[#171616] via-[#171616] to-transparent">
         <div className="max-w-5xl mx-auto">
           <InputBox />
         </div>
