@@ -18,9 +18,27 @@ import {
 } from "@/components/ui/input-group"
 import { Separator } from "@/components/ui/separator"
 
-export default function InputBox() {
+interface InputBoxProps {
+  onSubmit?: (query: string) => void
+}
+
+export default function InputBox({ onSubmit }: InputBoxProps) {
     const [text, setText] = useState("")
     const hasText = text.trim().length > 0
+
+    const handleSubmit = () => {
+      if (hasText && onSubmit) {
+        onSubmit(text)
+        setText("")
+      }
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        handleSubmit()
+      }
+    }
 
     return(
         <InputGroup>
@@ -28,6 +46,7 @@ export default function InputBox() {
               placeholder="Ask, Search or Chat..." 
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
             <InputGroupAddon align="block-end">
               <InputGroupButton
@@ -58,6 +77,7 @@ export default function InputBox() {
                 className={`rounded-full transition-colors ${hasText ? 'bg-[#E67820] hover:bg-[#E67820]/90' : ''}`}
                 size="icon-xs"
                 disabled={!hasText}
+                onClick={handleSubmit}
               >
                 <ArrowRightIcon className={hasText ? 'text-white' : ''} />
                 <span className="sr-only">Send</span>

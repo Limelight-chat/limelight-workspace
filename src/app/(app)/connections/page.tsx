@@ -1,4 +1,5 @@
 "use client";
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import docsIcon from "@/assets/icons/docs.png";
 import excelIcon from "@/assets/icons/excel.png";
 import sheetsIcon from "@/assets/icons/sheets.png";
@@ -17,6 +18,18 @@ import notionIcon from "@/assets/icons/notion.png";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import FileUpload06 from "@/components/file-upload-06";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { FileText, Trash2, Loader2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+
+interface Table {
+  id: string;
+  table_name: string;
+  original_filename: string;
+  uploaded_at: string;
+  row_count?: number;
+}
 
 const ICONS = {
   docs: docsIcon.src,
@@ -129,7 +142,53 @@ const Data = [
 ];
 
 export default function Database() {
+  const [tables, setTables] = useState<Table[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTables = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await api.getTables();
+      setTables(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setError(err.message || "Failed to load files");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTables();
+
+    // Listen for file upload events
+    const handleFileUploaded = () => {
+      fetchTables();
+    };
+
+    window.addEventListener('fileUploaded', handleFileUploaded);
+
+    return () => {
+      window.removeEventListener('fileUploaded', handleFileUploaded);
+    };
+  }, []);
+
+  const handleDelete = async (tableId: string) => {
+    if (!confirm("Are you sure you want to delete this file?")) {
+      return;
+    }
+
+    try {
+      await api.deleteTable(tableId);
+      setTables(tables.filter(t => t.id !== tableId));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete file");
+    }
+  };
+
   return (
+    <ProtectedRoute>
     <div>
       <div className="flex flex-1 flex-col gap-6 lg:gap-6 p-4 pt-0">
         {/* Scrollable container for all cards */}
@@ -166,10 +225,48 @@ export default function Database() {
           </div>
         </div>
 
-        {/* Your files (static placeholder) */}
+        {/* Your files */}
         <div className="sm:max-h-none overflow-x-auto sm:overflow-visible pr-2 bg-[#18181B] border border-[#2a2a2a] rounded-xl p-6">
           <h1 className="text-primary font-medium text-xl mb-4">Your Files</h1>
-          <div className="text-sm text-muted-foreground">No files added yet.</div>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="text-sm text-red-500">{error}</div>
+          ) : tables.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No files added yet.</div>
+          ) : (
+            <div className="grid gap-3">
+              {tables.map((table) => (
+                <Card key={table.id} className="p-3 bg-[#232323] border-[#2f2e2e]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="grid size-9 shrink-0 place-content-center rounded border border-[#2f2e2e] bg-[#363535]">
+                        <FileText className="size-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-sm">{table.original_filename}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {table.row_count ? `${table.row_count} rows` : ""}
+                          {table.uploaded_at && ` • ${new Date(table.uploaded_at).toLocaleDateString()}`}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(table.id)}
+                      aria-label="Delete file"
+                      className="hover:bg-[#363535]"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* upload file section (static) */}
@@ -179,5 +276,7 @@ export default function Database() {
         </div>
       </div>
     </div>
+    </ProtectedRoute>
   );
 }
+

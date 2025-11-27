@@ -34,15 +34,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <div className="fixed top-4 left-4 z-50 lg:hidden">
-            <SidebarTrigger className="bg-sidebar border border-sidebar-border rounded-md p-2" />
-          </div>
-          {children}
-        </SidebarInset>
-        </SidebarProvider>
+        {children}
       </body>
     </html>
   );

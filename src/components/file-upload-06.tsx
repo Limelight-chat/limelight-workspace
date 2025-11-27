@@ -6,46 +6,148 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Upload, FileText, X, CheckCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, X, CheckCircle, Loader2, AlertCircle } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface UploadItem {
   id: string;
   name: string;
   progress: number;
-  status: "uploading" | "completed";
+  status: "uploading" | "completed" | "error";
+  jobId?: string;
+  error?: string;
 }
 
 export default function FileUpload06() {
-  const [uploads, setUploads] = useState<UploadItem[]>([
-    {
-      id: "a1",
-      name: "design-mock-landing.png",
-      progress: 62,
-      status: "uploading",
-    },
-    {
-      id: "b2",
-      name: "team-headshot-2025-01-09.jpg",
-      progress: 28,
-      status: "uploading",
-    },
-    {
-      id: "c3",
-      name: "logo-v3-final.gif",
-      progress: 100,
-      status: "completed",
-    },
-  ]);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
   const filePickerRef = useRef<HTMLInputElement>(null);
 
   const openFilePicker = () => {
     filePickerRef.current?.click();
   };
 
+  const handleFiles = async (files: FileList) => {
+    const fileArray = Array.from(files);
+    
+    // Filter for CSV and Excel files
+    const validFiles = fileArray.filter(file => 
+      file.name.endsWith('.csv') || 
+      file.name.endsWith('.xlsx') || 
+      file.name.endsWith('.xls')
+    );
+
+    if (validFiles.length === 0) {
+      alert('Please upload CSV or Excel files only');
+      return;
+    }
+
+    // Add files to upload list
+    const newUploads: UploadItem[] = validFiles.map(file => ({
+      id: Math.random().toString(36).substring(2, 11),
+      name: file.name,
+      progress: 0,
+      status: "uploading" as const,
+    }));
+
+    setUploads(prev => [...prev, ...newUploads]);
+
+    // Upload each file
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      const uploadItem = newUploads[i];
+
+      try {
+        // Start upload
+        setUploads(prev => prev.map(u => 
+          u.id === uploadItem.id ? { ...u, progress: 10 } : u
+        ));
+
+        const result = await api.uploadFile(file);
+        
+        // Update with job ID
+        setUploads(prev => prev.map(u => 
+          u.id === uploadItem.id ? { ...u, progress: 30, jobId: result.job_id } : u
+        ));
+
+        // Poll for job status
+        let attempts = 0;
+        const maxAttempts = 60; // 60 seconds max
+        
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          
+          try {
+            const status = await api.getJobStatus(result.job_id);
+            
+            if (status.status === 'completed') {
+              clearInterval(pollInterval);
+              setUploads(prev => prev.map(u => 
+                u.id === uploadItem.id ? { ...u, progress: 100, status: "completed" } : u
+              ));
+              // Dispatch event to notify library page to refresh
+              window.dispatchEvent(new CustomEvent('fileUploaded'));
+            } else if (status.status === 'failed') {
+              clearInterval(pollInterval);
+              setUploads(prev => prev.map(u => 
+                u.id === uploadItem.id ? { 
+                  ...u, 
+                  status: "error", 
+                  error: status.error || 'Upload failed' 
+                } : u
+              ));
+            } else if (status.status === 'processing') {
+              // Update progress based on stage
+              const progressMap: Record<string, number> = {
+                'starting': 40,
+                'parsing': 50,
+                'inserting': 70,
+                'generating_embeddings': 85,
+                'generating_description': 95,
+              };
+              const progress = progressMap[status.progress?.stage || 'starting'] || 50;
+              setUploads(prev => prev.map(u => 
+                u.id === uploadItem.id ? { ...u, progress } : u
+              ));
+            }
+            
+            if (attempts >= maxAttempts) {
+              clearInterval(pollInterval);
+              setUploads(prev => prev.map(u => 
+                u.id === uploadItem.id ? { 
+                  ...u, 
+                  status: "error", 
+                  error: 'Upload timeout' 
+                } : u
+              ));
+            }
+          } catch (error) {
+            clearInterval(pollInterval);
+            setUploads(prev => prev.map(u => 
+              u.id === uploadItem.id ? { 
+                ...u, 
+                status: "error", 
+                error: 'Failed to check status' 
+              } : u
+            ));
+          }
+        }, 1000);
+        
+      } catch (error: any) {
+        setUploads(prev => prev.map(u => 
+          u.id === uploadItem.id ? { 
+            ...u, 
+            status: "error", 
+            error: error.message || 'Upload failed' 
+          } : u
+        ));
+      }
+    }
+  };
+
   const onFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
     if (selectedFiles) {
-      console.log("Files selected:", selectedFiles);
+      handleFiles(selectedFiles);
     }
   };
 
@@ -57,7 +159,7 @@ export default function FileUpload06() {
     event.preventDefault();
     const droppedFiles = event.dataTransfer.files;
     if (droppedFiles) {
-      console.log("Files dropped:", droppedFiles);
+      handleFiles(droppedFiles);
     }
   };
 
@@ -66,9 +168,8 @@ export default function FileUpload06() {
   };
 
   const activeUploads = uploads.filter((file) => file.status === "uploading");
-  const completedUploads = uploads.filter(
-    (file) => file.status === "completed"
-  );
+  const completedUploads = uploads.filter((file) => file.status === "completed");
+  const errorUploads = uploads.filter((file) => file.status === "error");
 
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-y-6">
@@ -98,12 +199,12 @@ export default function FileUpload06() {
           ref={filePickerRef}
           type="file"
           className="hidden"
-          accept="image/png,image/jpeg,image/gif"
+          accept=".csv,.xlsx,.xls"
           multiple
           onChange={onFileInputChange}
         />
         <span className="text-base/6 text-muted-foreground group-disabled:opacity-50 mt-2 block sm:text-xs">
-          Supported: JPG, PNG, GIF (max 10 MB)
+          Supported: CSV, Excel (XLSX, XLS)
         </span>
       </Card>
 
@@ -149,7 +250,46 @@ export default function FileUpload06() {
           </div>
         )}
 
-        {activeUploads.length > 0 && completedUploads.length > 0 && (
+        {(activeUploads.length > 0 && (completedUploads.length > 0 || errorUploads.length > 0)) && (
+          <Separator className="my-0" />
+        )}
+
+        {errorUploads.length > 0 && (
+          <div>
+            <h2 className="text-foreground text-lg flex items-center font-mono font-normal uppercase sm:text-xs mb-4">
+              <AlertCircle className="mr-1 size-4 text-red-500" />
+              Failed
+            </h2>
+            <div className="-mt-2 divide-y">
+              {errorUploads.map((file) => (
+                <div key={file.id} className="group flex items-center py-4">
+                  <div className="mr-3 grid size-10 shrink-0 place-content-center rounded border bg-red-500/10 border-red-500/20">
+                    <AlertCircle className="inline size-4 text-red-500" />
+                  </div>
+                  <div className="flex flex-col w-full mb-1">
+                    <div className="flex justify-between gap-2">
+                      <span className="select-none text-base/6 text-foreground group-disabled:opacity-50 sm:text-sm/6">
+                        {file.name}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-4 p-0 h-auto"
+                        onClick={() => removeUploadById(file.id)}
+                        aria-label="Remove"
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                    <span className="text-xs text-red-400">{file.error}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(errorUploads.length > 0 && completedUploads.length > 0) && (
           <Separator className="my-0" />
         )}
 

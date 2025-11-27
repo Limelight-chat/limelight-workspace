@@ -1,16 +1,26 @@
-import InputBox from "@/components/InputBox";
+'use client'
 
-export default function page() {
-    return(
-        <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-[#171616]">
-          <div className="w-full max-w-2xl flex flex-col items-center gap-6">
-            <h1 className="text-3xl md:text-4xl font-semibold text-center">
-              Hello, How may I help you?
-            </h1>
-            <div className="w-full">
-              <InputBox />
-            </div>
-          </div>
-        </div>
-    )
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
+
+export default function Home() {
+  const router = useRouter()
+  const { user, loading } = useAuth()
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        router.push('/chat')
+      } else {
+        router.push('/signin')
+      }
+    }
+  }, [user, loading, router])
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-[#171616]">
+      <div className="text-slate-400">Loading...</div>
+    </div>
+  )
 }
