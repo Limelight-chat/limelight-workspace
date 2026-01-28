@@ -31,6 +31,13 @@ export function TeamSwitcher({
   const { isMobile } = useSidebar()
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
 
+  // Sync activeTeam when teams prop changes (e.g., after async load)
+  React.useEffect(() => {
+    if (teams[0] && teams[0].name !== activeTeam?.name) {
+      setActiveTeam(teams[0])
+    }
+  }, [teams])
+
   if (!activeTeam) {
     return null
   }
@@ -42,7 +49,7 @@ export function TeamSwitcher({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors cursor-pointer"
             >
               <div className="bg-(--color-accent) text-(--color-accent-foreground) flex aspect-square size-8 items-center justify-center rounded-lg">
                 <activeTeam.logo className="size-4" />

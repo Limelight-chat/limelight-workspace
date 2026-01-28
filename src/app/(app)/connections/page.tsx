@@ -189,93 +189,94 @@ export default function Database() {
 
   return (
     <ProtectedRoute>
-    <div>
-      <div className="flex flex-1 flex-col gap-6 lg:gap-6 p-4 pt-0">
-        {/* Scrollable container for all cards */}
-        <div className="sm:max-h-none overflow-x-auto overflow-y-hidden sm:overflow-visible pr-2 bg-[#18181B] border border-[#2a2a2a] rounded-xl p-6">
-          <h1 className="text-primary font-medium text-xl mb-4">Connect Databases</h1>
-          <div className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] grid-rows-2 gap-6 sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:auto-rows-fr">
-            {Data.map((item) => {
-              const iconKeys = item.icons || [];
-              const iconSrcs = iconKeys.map((key) => (ICONS as Record<string, string>)[key] || ICONS.data);
+      <div>
+        <div className="flex flex-1 flex-col gap-6 lg:gap-6 p-4">
 
-              return (
-                <div
-                  key={item.id}
-                  className="relative flex h-full min-h-[200px] flex-col items-start rounded-xl border border-[#2f2e2e] bg-[#232323] p-6 pb-6 sm:pb-20 shadow-sm transition hover:shadow-md"
-                >
-                  <div className="mb-4 flex h-10 items-center justify-center gap-2 rounded-md bg-[#363535] px-2">
-                    {iconSrcs.map((src, idx) => (
-                      <Image key={idx} src={src} alt={item.title} width={24} height={24} className="h-6 w-6 object-contain" />
-                    ))}
-                  </div>
-                  <div className="mb-1 text-base font-medium">{item.title}</div>
-                  <div className="text-xs leading-snug text-muted-foreground text-left">{item.description}</div>
-
-
-                  <Button
-                    className={`bg-[#FF7D0B] text-black rounded-md ml-auto mt-4 w-full sm:w-auto sm:absolute sm:bottom-4 sm:right-4 px-3 py-2 shadow-sm hover:bg-[#cc5f00] hover:text-black`}
-                    disabled={item.title !== "Google Drive"}
-                  >
-                    {item.title !== "Google Drive" ? "Coming Soon" : item.isConnected ? "Add Files" : "Connect"}
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Your files */}
-        <div className="sm:max-h-none overflow-x-auto sm:overflow-visible pr-2 bg-[#18181B] border border-[#2a2a2a] rounded-xl p-6">
-          <h1 className="text-primary font-medium text-xl mb-4">Your Files</h1>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="size-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : error ? (
-            <div className="text-sm text-red-500">{error}</div>
-          ) : tables.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No files added yet.</div>
-          ) : (
-            <div className="grid gap-3">
-              {tables.map((table) => (
-                <Card key={table.id} className="p-3 bg-[#232323] border-[#2f2e2e]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="grid size-9 shrink-0 place-content-center rounded border border-[#2f2e2e] bg-[#363535]">
-                        <FileText className="size-4" />
+          {/* Row 1: Your files */}
+          <div className="sm:max-h-none overflow-x-auto sm:overflow-visible pr-2 bg-[#191919] border border-[#2a2a2a] rounded-xl p-6">
+            <h1 className="text-primary font-medium text-xl mb-4">Your Files</h1>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : error ? (
+              <div className="text-sm text-red-500">{error}</div>
+            ) : tables.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No files added yet.</div>
+            ) : (
+              <div className="grid gap-3">
+                {tables.map((table) => (
+                  <Card key={table.id} className="p-3 bg-[#232323] border-[#2f2e2e]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="grid size-9 shrink-0 place-content-center rounded border border-[#2f2e2e] bg-[#363535]">
+                          <FileText className="size-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-sm">{table.original_filename}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {table.row_count ? `${table.row_count} rows` : ""}
+                            {table.uploaded_at && ` • ${new Date(table.uploaded_at).toLocaleDateString()}`}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-medium text-sm">{table.original_filename}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {table.row_count ? `${table.row_count} rows` : ""}
-                          {table.uploaded_at && ` • ${new Date(table.uploaded_at).toLocaleDateString()}`}
-                        </p>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(table.id)}
+                        aria-label="Delete file"
+                        className="hover:bg-[#363535]"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                     </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Row 2: Upload Files */}
+          <div className="pr-2 bg-[#191919] border border-[#2a2a2a] rounded-xl md:min-h-min p-6">
+            <h1 className="text-primary font-medium text-xl mb-4">Upload Files to Folder</h1>
+            <FileUpload06 />
+          </div>
+
+          {/* Row 3: Connect Databases */}
+          <div className="sm:max-h-none overflow-x-auto overflow-y-hidden sm:overflow-visible pr-2 bg-[#191919] border border-[#2a2a2a] rounded-xl p-6">
+            <h1 className="text-primary font-medium text-xl mb-4">Connect Databases</h1>
+            <div className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] grid-rows-2 gap-6 sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:auto-rows-fr">
+              {Data.map((item) => {
+                const iconKeys = item.icons || [];
+                const iconSrcs = iconKeys.map((key) => (ICONS as Record<string, string>)[key] || ICONS.data);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="relative flex h-full min-h-[200px] flex-col items-start rounded-xl border border-[#2f2e2e] bg-[#232323] p-6 pb-6 sm:pb-20 shadow-sm transition hover:shadow-md"
+                  >
+                    <div className="mb-4 flex h-10 items-center justify-center gap-2 rounded-md bg-[#363535] px-2">
+                      {iconSrcs.map((src, idx) => (
+                        <Image key={idx} src={src} alt={item.title} width={24} height={24} className="h-6 w-6 object-contain" />
+                      ))}
+                    </div>
+                    <div className="mb-1 text-base font-medium">{item.title}</div>
+                    <div className="text-xs leading-snug text-muted-foreground text-left">{item.description}</div>
+
+
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(table.id)}
-                      aria-label="Delete file"
-                      className="hover:bg-[#363535]"
+                      className={`bg-[#FF7D0B] text-black rounded-md ml-auto mt-4 w-full sm:w-auto sm:absolute sm:bottom-4 sm:right-4 px-3 py-2 shadow-sm hover:bg-[#cc5f00] hover:text-black`}
+                      disabled={item.title !== "Google Drive"}
                     >
-                      <Trash2 className="size-4" />
+                      {item.title !== "Google Drive" ? "Coming Soon" : item.isConnected ? "Add Files" : "Connect"}
                     </Button>
                   </div>
-                </Card>
-              ))}
+                );
+              })}
             </div>
-          )}
-        </div>
-
-        {/* upload file section (static) */}
-        <div className="pr-2 bg-[#18181B] border border-[#2a2a2a] rounded-xl md:min-h-min p-6">
-          <h1 className="text-primary font-medium text-xl mb-4">Upload Files to Folder</h1>
-          <FileUpload06 />
+          </div>
         </div>
       </div>
-    </div>
     </ProtectedRoute>
   );
 }

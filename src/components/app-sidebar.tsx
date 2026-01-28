@@ -10,13 +10,13 @@ import {
     Link,
     CirclePlus,
     MessagesSquare,
-    Database,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
 import { useSidebar } from "@/components/ui/sidebar"
 import { TeamSwitcher } from "@/components/team-switcher";
 import { NavUser } from "@/components/nav-user"
+import { useAuthContext } from "@/contexts/AuthContext";
 
 import {
     Sidebar,
@@ -27,19 +27,7 @@ import {
     SidebarTrigger,
 } from "@/components/ui/sidebar";
 
-const data = {
-    user: {
-        name: "Arnav",
-        email: "a@example.com",
-        avatar: "/avatars/shadcn.jpg",
-    },
-    teams: [
-        {
-            name: "Limelight Inc",
-            logo: GalleryVerticalEnd,
-            plan: "Enterprise",
-        },
-    ],
+const staticData = {
     navMain: [
         {
             title: "Chat",
@@ -55,11 +43,6 @@ const data = {
             title: "Library",
             url: "/library",
             icon: Bookmark,
-        },
-        {
-            title: "Memory",
-            url: "/memory",
-            icon: Database,
         },
         {
             title: "Connections",
@@ -92,9 +75,23 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-
     const { state } = useSidebar()
     const isCollapsed = state === "collapsed"
+    const { profile } = useAuthContext()
+
+    const user = {
+        name: profile?.name || "User",
+        email: profile?.email || "",
+        avatar: profile?.avatar || "",
+    }
+
+    const teams = [
+        {
+            name: profile?.companyName || "My Company",
+            logo: GalleryVerticalEnd,
+            plan: "Free",
+        },
+    ]
 
     return (
         <Sidebar collapsible="icon" {...props}>
@@ -102,16 +99,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <div className="flex items-center gap-2">
 
                     {!isCollapsed && (
-                        <TeamSwitcher teams={data.teams} />
+                        <TeamSwitcher teams={teams} />
                     )}
-                    <SidebarTrigger />
+                    <SidebarTrigger className="cursor-pointer" />
                 </div>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain items={data.navMain} />
+                <NavMain items={staticData.navMain} />
             </SidebarContent>
             <SidebarFooter>
-                <NavUser user={data.user} />
+                <NavUser user={user} />
             </SidebarFooter>
             <SidebarRail />
         </Sidebar>

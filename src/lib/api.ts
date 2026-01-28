@@ -3,11 +3,11 @@ import { supabase } from './supabase'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-async function getAuthHeaders() {
+async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session) {
-    throw new Error('Not authenticated')
+    return {}
   }
 
   return {
@@ -367,6 +367,76 @@ export const api = {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.detail || 'Failed to reject relationship')
+    }
+
+    return response.json()
+  },
+
+  // =============================================================================
+  // Query History Methods
+  // =============================================================================
+
+  // Get query history
+  async getQueryHistory(limit: number = 50, offset: number = 0) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/history?limit=${limit}&offset=${offset}`, {
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to get query history')
+    }
+
+    return response.json()
+  },
+
+  // Get single history item
+  async getQueryHistoryItem(historyId: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/history/${historyId}`, {
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to get history item')
+    }
+
+    return response.json()
+  },
+
+  // Delete history item
+  async deleteQueryHistoryItem(historyId: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/history/${historyId}`, {
+      method: 'DELETE',
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to delete history item')
+    }
+
+    return response.json()
+  },
+
+  // Re-run a history item (executes stored SQL directly)
+  async rerunHistoryItem(historyId: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/history/${historyId}/rerun`, {
+      method: 'POST',
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to re-run query')
     }
 
     return response.json()
