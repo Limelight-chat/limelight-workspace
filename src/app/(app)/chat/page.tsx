@@ -58,7 +58,7 @@ export default function Chat() {
     setQueryLoading(true)
     setQueryError(null)
     setSourceData(null) // Reset source data for new query
-    
+
     try {
       // Get all table IDs to query
       const tableIds = tables.map(t => t.id)
@@ -75,13 +75,13 @@ export default function Chat() {
   // Extract tables used from SQL query
   const getUsedTables = () => {
     if (!queryResult?.sql) return []
-    
+
     const usedTables = tables.filter(table => {
       // Check if table name appears in the SQL query
       const tableNamePattern = new RegExp(`\\b${table.table_name}\\b`, 'i')
       return tableNamePattern.test(queryResult.sql)
     })
-    
+
     return usedTables
   }
 
@@ -143,7 +143,7 @@ export default function Chat() {
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-5xl mx-auto px-6 py-12 pb-32">
-            
+
             {hasSubmitted && (
               <>
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight">
@@ -151,25 +151,23 @@ export default function Chat() {
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-4 mt-4">
-                  <button 
+                  <button
                     onClick={() => setActiveTab('search')}
-                    className={`flex items-center gap-2 text-sm text-slate-300 px-2 py-1 rounded-md hover:brightness-110 ${
-                      activeTab === 'search' ? 'bg-black' : 'bg-transparent'
-                    }`}
+                    className={`flex items-center gap-2 text-sm text-slate-300 px-2 py-1 rounded-md hover:brightness-110 ${activeTab === 'search' ? 'bg-black' : 'bg-transparent'
+                      }`}
                   >
                     <Search className="w-4 h-4" />
                     <span>Search</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => setActiveTab('source')}
-                    className={`flex items-center gap-2 text-sm text-slate-300 px-2 py-1 rounded-md hover:brightness-110 ${
-                      activeTab === 'source' ? 'bg-black' : 'bg-transparent'
-                    }`}
+                    className={`flex items-center gap-2 text-sm text-slate-300 px-2 py-1 rounded-md hover:brightness-110 ${activeTab === 'source' ? 'bg-black' : 'bg-transparent'
+                      }`}
                   >
                     <IconInfoCircle className="w-4 h-4" />
                     <span>Source</span>
                   </button>
-                  <button 
+                  <button
                     disabled
                     className="flex items-center gap-2 text-sm text-slate-500 bg-transparent px-2 py-1 rounded-md cursor-not-allowed opacity-50"
                   >
