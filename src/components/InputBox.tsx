@@ -46,14 +46,14 @@ export default function InputBox({ onSubmit }: InputBoxProps) {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => router.push('/connections')}
-            className="p-1.5 text-slate-400 hover:text-[#E67820] hover:bg-[#E67820]/10 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-[#E67820] hover:bg-[#E67820]/10 rounded-lg transition-colors cursor-pointer"
           >
             <IconPlus size={20} stroke={2} />
           </button>
 
           <button
             onClick={() => router.push('/history')}
-            className="p-1.5 text-slate-400 hover:text-[#E67820] hover:bg-[#E67820]/10 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-[#E67820] hover:bg-[#E67820]/10 rounded-lg transition-colors cursor-pointer"
           >
             <IconHistory size={20} stroke={2} />
           </button>

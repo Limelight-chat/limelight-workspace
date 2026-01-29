@@ -5,11 +5,10 @@ import Link from "next/link"
 
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "./ui/sidebar"
 
 export function NavMain({
   items,
@@ -30,13 +29,19 @@ export function NavMain({
               asChild
               tooltip={item.title}
               isActive={item.isActive}
-              className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors cursor-pointer"
+              className={
+                "transition-all rounded-md hover:bg-sidebar-accent " +
+                // consistent base padding so selecting doesn't shift layout
+                "px-3 py-2 " +
+                // active state: dark background and slightly bolder text
+                (item.isActive ? "bg-[#141414] text-sidebar-foreground font-medium" : "")
+              }
             >
               <Link href={item.url} className="flex items-center gap-3">
                 {item.icon && (
-                  <item.icon className="h-4 w-4 shrink-0 text-[#ff8e2b]" />
+                  <item.icon className="text-[#ff8e2b] size-4 shrink-0" />
                 )}
-                <span>{item.title}</span>
+                <span className={item.isActive ? "font-medium" : ""}>{item.title}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

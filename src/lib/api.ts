@@ -228,7 +228,7 @@ export const api = {
   },
 
   // Execute query
-  async executeQuery(query: string, tableIds?: string[]) {
+  async executeQuery(query: string, tableIds?: string[], unlimitedRows: boolean = false, excludeFromHistory: boolean = false) {
     const headers = await getAuthHeaders()
 
     const response = await fetch(`${API_URL}/api/query`, {
@@ -240,12 +240,15 @@ export const api = {
       body: JSON.stringify({
         query,
         table_ids: tableIds,
+        unlimited_rows: unlimitedRows,
+        exclude_from_history: excludeFromHistory
       }),
     })
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || 'Query failed')
+      // Throw the whole error object so we can access custom fields like selected_table_ids
+      throw error
     }
 
     return response.json()

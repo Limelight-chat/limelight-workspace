@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { api } from '@/lib/api'
 import { Search, Trash2, X, Loader2 } from 'lucide-react'
+import { DataTable } from '@/components/ui/data-table'
+import { ColumnDef } from '@tanstack/react-table'
 import { useRouter } from 'next/navigation'
 
 interface HistoryItem {
@@ -197,7 +199,7 @@ export default function HistoryPage() {
                                         setSelectMode(!selectMode)
                                         setSelectedIds(new Set())
                                     }}
-                                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
                                 >
                                     {selectMode ? 'Cancel' : 'Select'}
                                 </button>
@@ -224,7 +226,7 @@ export default function HistoryPage() {
                                 <div className="text-red-400 mb-3">{error}</div>
                                 <button
                                     onClick={loadHistory}
-                                    className="text-sm text-blue-400 hover:text-blue-300"
+                                    className="text-sm text-blue-400 hover:text-blue-300 cursor-pointer"
                                 >
                                     Try again
                                 </button>
@@ -262,8 +264,8 @@ export default function HistoryPage() {
                                                 <div className="pt-0.5">
                                                     <div
                                                         className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${selectedIds.has(item.id)
-                                                                ? 'bg-blue-500 border-blue-500'
-                                                                : 'border-gray-600'
+                                                            ? 'bg-blue-500 border-blue-500'
+                                                            : 'border-gray-600'
                                                             }`}
                                                     >
                                                         {selectedIds.has(item.id) && (
@@ -318,7 +320,7 @@ export default function HistoryPage() {
                                 </div>
                                 <button
                                     onClick={closeModal}
-                                    className="p-2 text-slate-400 hover:text-slate-200 hover:bg-gray-800 rounded-lg transition-colors"
+                                    className="p-2 text-slate-400 hover:text-slate-200 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
@@ -348,30 +350,18 @@ export default function HistoryPage() {
                                         {/* Result Table */}
                                         {resultModal.result.rows.length > 0 ? (
                                             <div className="bg-[#131313] rounded-xl overflow-hidden">
-                                                <div className="overflow-x-auto max-h-96">
-                                                    <table className="w-full text-sm">
-                                                        <thead className="border-b border-gray-800 sticky top-0 bg-[#131313]">
-                                                            <tr>
-                                                                {Object.keys(resultModal.result.rows[0]).map((col) => (
-                                                                    <th key={col} className="text-left px-4 py-3 text-slate-400 font-medium whitespace-nowrap">
-                                                                        {col}
-                                                                    </th>
-                                                                ))}
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {resultModal.result.rows.map((row, idx) => (
-                                                                <tr key={idx} className={idx < resultModal.result!.rows.length - 1 ? "border-b border-gray-800/50" : ""}>
-                                                                    {Object.values(row).map((val: any, colIdx) => (
-                                                                        <td key={colIdx} className="px-4 py-3 text-slate-300 whitespace-nowrap">
-                                                                            {val !== null && val !== undefined ? String(val) : '-'}
-                                                                        </td>
-                                                                    ))}
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
+                                                <DataTable
+                                                    columns={Object.keys(resultModal.result.rows[0]).map((key) => ({
+                                                        accessorKey: key,
+                                                        header: key,
+                                                        cell: ({ row }) => {
+                                                            const value = row.getValue(key)
+                                                            return value !== null && value !== undefined ? String(value) : '-'
+                                                        }
+                                                    })) as ColumnDef<any>[]}
+                                                    data={resultModal.result.rows}
+                                                    maxHeight="max-h-[500px]"
+                                                />
                                             </div>
                                         ) : (
                                             <div className="text-center py-8 text-slate-500">

@@ -63,14 +63,14 @@ export default function SignIn() {
             <main className="grid md:grid-cols-2 min-h-screen pt-20">
 
                 {/* Left Side: Auth & Hero Text */}
-                <div className="flex flex-col justify-center px-8 md:px-24 lg:px-32 py-12">
-                    <div className="mb-16">
-                        <h1 className="font-serif text-6xl md:text-7xl leading-[1.1] mb-6 text-[#f5f5f0]">
-                            Impossible? <br />
-                            Possible.
+                <div className="flex flex-col justify-center px-8 md:px-24 lg:px-32 py-8">
+                    <div className="mb-8">
+                        <h1 className="font-helvetica text-5xl md:text-6xl leading-[1.1] mb-4 text-[#f5f5f0]">
+                            The search engine <br />
+                            from the future.
                         </h1>
                         <p className="text-[#a3a3a3] text-lg font-light">
-                            The AI for problem solvers
+                            Enterprise-grade AI search for modern teams
                         </p>
                     </div>
 
@@ -78,7 +78,7 @@ export default function SignIn() {
                     <div className="w-full max-w-sm">
                         <div className="bg-[#1f1e1e] border border-[#2e2d2d] rounded-2xl p-6 shadow-2xl">
                             <div className="mb-6">
-                                <h2 className="text-xl font-semibold mb-1">
+                                <h2 className="text-xl font-helvetica font-semibold mb-1">
                                     {isSignUp ? 'Create your account' : 'Welcome back'}
                                 </h2>
                                 <p className="text-sm text-[#a3a3a3]">
@@ -90,8 +90,7 @@ export default function SignIn() {
                                 {/* Google Button Placeholder */}
                                 <button
                                     type="button"
-                                    className="w-full flex items-center justify-center gap-2 bg-[#2f2f2f] hover:bg-[#383838] text-[#f5f5f0] py-2.5 rounded-lg text-sm font-medium transition-colors border border-[#3d3d3d]"
-                                    onClick={() => alert("Google auth placeholder")}
+                                    className="w-full flex items-center justify-center gap-2 bg-[#2f2f2f] hover:bg-[#383838] text-[#f5f5f0] py-2.5 rounded-lg text-sm font-medium transition-colors border border-[#3d3d3d] cursor-pointer"
                                 >
                                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                                         <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -134,7 +133,7 @@ export default function SignIn() {
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="w-full bg-[#f5f5f0] hover:bg-[#e5e5e0] text-[#171616] py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                                        className="w-full bg-[#f5f5f0] hover:bg-[#e5e5e0] text-[#171616] py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 cursor-pointer"
                                     >
                                         {loading ? 'Processing...' : (isSignUp ? 'Create account' : 'Sign In')}
                                     </button>
@@ -157,7 +156,7 @@ export default function SignIn() {
                                         Already a member?{' '}
                                         <button
                                             onClick={() => setIsSignUp(false)}
-                                            className="text-[#f5f5f0] hover:text-white font-medium underline-offset-4 hover:underline transition-colors"
+                                            className="text-[#f5f5f0] hover:text-white font-medium underline-offset-4 hover:underline transition-colors cursor-pointer"
                                         >
                                             Sign in here
                                         </button>
@@ -167,7 +166,7 @@ export default function SignIn() {
                                         New to Limelight?{' '}
                                         <button
                                             onClick={() => setIsSignUp(true)}
-                                            className="text-[#f5f5f0] hover:text-white font-medium underline-offset-4 hover:underline transition-colors"
+                                            className="text-[#f5f5f0] hover:text-white font-medium underline-offset-4 hover:underline transition-colors cursor-pointer"
                                         >
                                             Sign up here
                                         </button>

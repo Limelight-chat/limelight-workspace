@@ -8,6 +8,8 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { api } from '@/lib/api'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import { DataTable } from "@/components/ui/data-table"
+import { ColumnDef } from "@tanstack/react-table"
 
 interface QueryResult {
   sql: string
@@ -17,6 +19,9 @@ interface QueryResult {
   summary: string | null
   execution_time: number
 }
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export default function Chat() {
   const router = useRouter()
@@ -31,6 +36,7 @@ export default function Chat() {
   const [queryError, setQueryError] = useState<string | null>(null)
   const [sourceData, setSourceData] = useState<Record<string, any> | null>(null)
   const [sourceLoading, setSourceLoading] = useState(false)
+  const [errorSourceTables, setErrorSourceTables] = useState<string[]>([])
 
   // Get user name from auth context
   const userName = profile?.name?.split(' ')[0] || 'User'
@@ -67,7 +73,32 @@ export default function Chat() {
       setQueryResult(result)
     } catch (error: any) {
       console.error('Query failed:', error)
-      setQueryError(error.message || 'Failed to execute query')
+
+      // Handle structured error with selected tables
+      let errorMessage = error.message || 'Failed to execute query'
+
+      try {
+        // Direct property check (since we throw the full object now)
+        if (error.detail && typeof error.detail === 'object') {
+          if (error.detail.selected_table_ids) {
+            setErrorSourceTables(error.detail.selected_table_ids)
+            // Auto-switch to source tab on error if we have tables to show
+            setActiveTab('source')
+          }
+          if (error.detail.message) {
+            errorMessage = error.detail.message
+          }
+        }
+        else if (error.selected_table_ids) {
+          setErrorSourceTables(error.selected_table_ids)
+          setActiveTab('source')
+        }
+
+      } catch (e) {
+        console.warn('Failed to parse error details', e)
+      }
+
+      setQueryError(errorMessage)
     } finally {
       setQueryLoading(false)
     }
@@ -75,15 +106,21 @@ export default function Chat() {
 
   // Extract tables used from SQL query
   const getUsedTables = () => {
-    if (!queryResult?.sql) return []
+    // If we have a successful result, show tables used in the SQL
+    if (queryResult?.sql) {
+      const usedTables = tables.filter(table => {
+        const tableNamePattern = new RegExp(`\\b${table.table_name}\\b`, 'i')
+        return tableNamePattern.test(queryResult.sql)
+      })
+      return usedTables
+    }
 
-    const usedTables = tables.filter(table => {
-      // Check if table name appears in the SQL query
-      const tableNamePattern = new RegExp(`\\b${table.table_name}\\b`, 'i')
-      return tableNamePattern.test(queryResult.sql)
-    })
+    // If we have an error and captured source tables, show those
+    if (queryError && errorSourceTables.length > 0) {
+      return tables.filter(table => errorSourceTables.includes(table.id))
+    }
 
-    return usedTables
+    return []
   }
 
   // Fetch complete source data for used tables
@@ -94,8 +131,8 @@ export default function Chat() {
     setSourceLoading(true)
     try {
       const sourceDataPromises = usedTables.map(async (table) => {
-        // Query all data from the table
-        const result = await api.executeQuery(`SELECT * FROM ${table.table_name}`, [table.id])
+        // Query all data from the table (Unlimited & Excluded from History)
+        const result = await api.executeQuery(`SELECT * FROM ${table.table_name}`, [table.id], true, true)
         return {
           tableId: table.id,
           tableName: table.table_name,
@@ -118,12 +155,27 @@ export default function Chat() {
     }
   }
 
-  // Fetch source data when switching to source tab
+  // Fetch source data when switching to source tab or when we have an error with source files
   useEffect(() => {
-    if (activeTab === 'source' && queryResult && !sourceData) {
+    // Current condition: Active tab is source, AND we have either a result OR an error with captured table IDs.
+    // AND we haven't loaded source data yet.
+    if (activeTab === 'source' && (queryResult || (queryError && errorSourceTables.length > 0)) && !sourceData) {
       fetchSourceData()
     }
-  }, [activeTab, queryResult])
+  }, [activeTab, queryResult, queryError, errorSourceTables])
+
+  // Helper to create columns from data keys
+  const createColumns = (data: any[]): ColumnDef<any>[] => {
+    if (data.length === 0) return []
+    return Object.keys(data[0]).map((key) => ({
+      accessorKey: key,
+      header: key,
+      cell: ({ row }) => {
+        const value = row.getValue(key)
+        return value !== null && value !== undefined ? String(value) : '-'
+      }
+    }))
+  }
 
   return (
     <ProtectedRoute>
@@ -164,30 +216,36 @@ export default function Chat() {
                 {userQuery}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-4 mt-4">
-                <button
-                  onClick={() => setActiveTab('search')}
-                  className={`flex items-center gap-2 text-sm text-slate-300 px-2 py-1 rounded-md hover:brightness-110 ${activeTab === 'search' ? 'bg-black' : 'bg-transparent'
-                    }`}
-                >
-                  <Search className="w-4 h-4" />
-                  <span>Search</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('source')}
-                  className={`flex items-center gap-2 text-sm text-slate-300 px-2 py-1 rounded-md hover:brightness-110 ${activeTab === 'source' ? 'bg-black' : 'bg-transparent'
-                    }`}
-                >
-                  <IconInfoCircle className="w-4 h-4" />
-                  <span>Source</span>
-                </button>
-                <button
-                  disabled
-                  className="flex items-center gap-2 text-sm text-slate-500 bg-transparent px-2 py-1 rounded-md cursor-not-allowed opacity-50"
-                >
-                  <ChartColumn className="w-4 h-4" />
-                  <span>Charts</span>
-                </button>
+              <div className="flex items-center mt-4">
+                <div className="inline-flex bg-[#1f1e1e] p-1 rounded-lg border border-[#2e2d2d]">
+                  <button
+                    onClick={() => setActiveTab('search')}
+                    className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md transition-all cursor-pointer ${activeTab === 'search'
+                      ? 'bg-[#2f2f2f] text-[#f5f5f0] shadow-sm'
+                      : 'text-[#a3a3a3] hover:text-[#f5f5f0]'
+                      }`}
+                  >
+                    <Search className="w-4 h-4" />
+                    <span>Search</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('source')}
+                    className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md transition-all cursor-pointer ${activeTab === 'source'
+                      ? 'bg-[#2f2f2f] text-[#f5f5f0] shadow-sm'
+                      : 'text-[#a3a3a3] hover:text-[#f5f5f0]'
+                      }`}
+                  >
+                    <IconInfoCircle className="w-4 h-4" />
+                    <span>Source</span>
+                  </button>
+                  <button
+                    disabled
+                    className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-[#a3a3a3]/50 cursor-not-allowed"
+                  >
+                    <ChartColumn className="w-4 h-4" />
+                    <span>Charts</span>
+                  </button>
+                </div>
               </div>
               <div className="mt-4 w-full border-b border-grey-800"></div>
 
@@ -220,6 +278,17 @@ export default function Chat() {
                         )
                       })()}
                     </div>
+
+                    {/* Source Explanation Note for Errors */}
+                    {queryError && errorSourceTables.length > 0 && (
+                      <div className="mt-3 flex items-start gap-2 text-sm text-[#f5f5f0]/70 bg-orange-500/10 border border-orange-500/20 p-3 rounded-lg">
+                        <IconInfoCircle className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
+                        <p>
+                          The system selected these {getUsedTables().length} files accurately based on your query before encountering an error.
+                          This confirms the reasoning engine understood your intent but failed during execution.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-6">
@@ -238,30 +307,10 @@ export default function Chat() {
                           <p className="text-slate-300 mb-4">{queryResult.summary}</p>
                         )}
                         <div className="bg-[#131313] rounded-2xl overflow-hidden">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead className="border-b border-gray-800">
-                                <tr>
-                                  {Object.keys(queryResult.rows[0]).map((column) => (
-                                    <th key={column} className="text-left px-4 py-3 text-slate-400 font-medium">
-                                      {column}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {queryResult.rows.map((row, idx) => (
-                                  <tr key={idx} className={idx < queryResult.rows.length - 1 ? "border-b border-gray-800/50" : ""}>
-                                    {Object.values(row).map((value, colIdx) => (
-                                      <td key={colIdx} className="px-4 py-3 text-slate-300">
-                                        {value !== null && value !== undefined ? String(value) : '-'}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                          <DataTable
+                            columns={createColumns(queryResult.rows)}
+                            data={queryResult.rows}
+                          />
                         </div>
                         <div className="mt-3 text-sm text-slate-400">
                           {queryResult.total_rows} row{queryResult.total_rows !== 1 ? 's' : ''} returned
@@ -286,7 +335,21 @@ export default function Chat() {
               {/* Source Tab Content */}
               {activeTab === 'source' && (
                 <div className="mt-6">
-                  {queryResult && (
+                  {/* Alert for Error State */}
+                  {queryError && errorSourceTables.length > 0 && (
+                    <div className="mb-6">
+                      <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-200">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Execution Failed</AlertTitle>
+                        <AlertDescription>
+                          The query failed to run, but we've loaded the full content of the files the system selected.
+                          This allows you to inspect the data that was considered.
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
+
+                  {(queryResult || (queryError && errorSourceTables.length > 0)) && (
                     <>
                       {sourceLoading ? (
                         <div className="bg-[#131313] rounded-2xl p-8 text-center">
@@ -306,30 +369,10 @@ export default function Chat() {
                               </div>
                               {tableData.data.rows.length > 0 ? (
                                 <div className="bg-[#131313] rounded-2xl overflow-hidden">
-                                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                                    <table className="w-full text-sm">
-                                      <thead className="border-b border-gray-800 sticky top-0 bg-[#131313]">
-                                        <tr>
-                                          {Object.keys(tableData.data.rows[0]).map((column) => (
-                                            <th key={column} className="text-left px-4 py-3 text-slate-400 font-medium">
-                                              {column}
-                                            </th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {tableData.data.rows.map((row: any, idx: number) => (
-                                          <tr key={idx} className={idx < tableData.data.rows.length - 1 ? "border-b border-gray-800/50" : ""}>
-                                            {Object.values(row).map((value: any, colIdx: number) => (
-                                              <td key={colIdx} className="px-4 py-3 text-slate-300">
-                                                {value !== null && value !== undefined ? String(value) : '-'}
-                                              </td>
-                                            ))}
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
+                                  <DataTable
+                                    columns={createColumns(tableData.data.rows)}
+                                    data={tableData.data.rows}
+                                  />
                                 </div>
                               ) : (
                                 <div className="bg-[#131313] rounded-2xl p-8 text-center">
@@ -346,7 +389,7 @@ export default function Chat() {
                       )}
                     </>
                   )}
-                  {!queryResult && (
+                  {(!queryResult && (!queryError || errorSourceTables.length === 0)) && (
                     <div className="bg-[#131313] rounded-2xl p-8 text-center">
                       <div className="text-slate-400">Submit a query to see source data</div>
                     </div>
