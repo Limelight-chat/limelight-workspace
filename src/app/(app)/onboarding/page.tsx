@@ -29,8 +29,8 @@ export default function OnboardingPage() {
             if (updateError) throw updateError
 
             router.push('/chat')
-        } catch (err: any) {
-            setError(err.message || 'Failed to save company name')
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to save company name')
             setLoading(false)
         }
     }
@@ -46,7 +46,7 @@ export default function OnboardingPage() {
                         Welcome to Limelight
                     </h1>
                     <p className="text-[#a3a3a3] text-sm">
-                        Let's set up your workspace. Tell us about your organization.
+                        Let&apos;s set up your workspace. Tell us about your organization.
                     </p>
                 </div>
 

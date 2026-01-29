@@ -64,9 +64,9 @@ export default function HistoryPage() {
             setLoading(true)
             const data = await api.getQueryHistory()
             setHistory(data.items || [])
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to load history:', err)
-            setError(err.message || 'Failed to load history')
+            setError(err instanceof Error ? err.message : 'Failed to load history')
         } finally {
             setLoading(false)
         }
@@ -82,7 +82,7 @@ export default function HistoryPage() {
             setHistory(prev => prev.filter(item => item.id !== id))
             selectedIds.delete(id)
             setSelectedIds(new Set(selectedIds))
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to delete:', err)
         } finally {
             setDeleting(null)
@@ -117,11 +117,11 @@ export default function HistoryPage() {
                 loading: false,
                 result: result
             }))
-        } catch (err: any) {
+        } catch (err: unknown) {
             setResultModal(prev => ({
                 ...prev,
                 loading: false,
-                error: err.message || 'Failed to run query'
+                error: err instanceof Error ? err.message : 'Failed to run query'
             }))
         }
     }

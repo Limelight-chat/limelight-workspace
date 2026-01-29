@@ -152,8 +152,8 @@ export default function Database() {
       setError(null);
       const data = await api.getTables();
       setTables(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError(err.message || "Failed to load files");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load files");
     } finally {
       setLoading(false);
     }
@@ -182,8 +182,8 @@ export default function Database() {
     try {
       await api.deleteTable(tableId);
       setTables(tables.filter(t => t.id !== tableId));
-    } catch (err: any) {
-      alert(err.message || "Failed to delete file");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete file");
     }
   };
 

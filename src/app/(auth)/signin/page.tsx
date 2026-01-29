@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Navbar5 } from '@/components/navbar5'
-import Link from 'next/link'
 
 export default function SignIn() {
     const router = useRouter()
@@ -45,9 +44,10 @@ export default function SignIn() {
                 router.push('/')
                 router.refresh()
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'An error occurred';
             setMessage({
-                text: error.message || 'An error occurred',
+                text: errorMessage,
                 type: 'error',
             })
         } finally {

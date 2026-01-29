@@ -36,7 +36,7 @@ export function TeamSwitcher({
     if (teams[0] && teams[0].name !== activeTeam?.name) {
       setActiveTeam(teams[0])
     }
-  }, [teams])
+  }, [teams, activeTeam?.name])
 
   if (!activeTeam) {
     return null

@@ -71,26 +71,27 @@ export default function Chat() {
       const tableIds = tables.map(t => t.id)
       const result = await api.executeQuery(query, tableIds)
       setQueryResult(result)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Query failed:', error)
 
       // Handle structured error with selected tables
-      let errorMessage = error.message || 'Failed to execute query'
+      const err = error as { message?: string; detail?: { selected_table_ids?: string[]; message?: string }; selected_table_ids?: string[] }
+      let errorMessage = err.message || 'Failed to execute query'
 
       try {
         // Direct property check (since we throw the full object now)
-        if (error.detail && typeof error.detail === 'object') {
-          if (error.detail.selected_table_ids) {
-            setErrorSourceTables(error.detail.selected_table_ids)
+        if (err.detail && typeof err.detail === 'object') {
+          if (err.detail.selected_table_ids) {
+            setErrorSourceTables(err.detail.selected_table_ids)
             // Auto-switch to source tab on error if we have tables to show
             setActiveTab('source')
           }
-          if (error.detail.message) {
-            errorMessage = error.detail.message
+          if (err.detail.message) {
+            errorMessage = err.detail.message
           }
         }
-        else if (error.selected_table_ids) {
-          setErrorSourceTables(error.selected_table_ids)
+        else if (err.selected_table_ids) {
+          setErrorSourceTables(err.selected_table_ids)
           setActiveTab('source')
         }
 
@@ -342,7 +343,7 @@ export default function Chat() {
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Execution Failed</AlertTitle>
                         <AlertDescription>
-                          The query failed to run, but we've loaded the full content of the files the system selected.
+                          The query failed to run, but we&apos;ve loaded the full content of the files the system selected.
                           This allows you to inspect the data that was considered.
                         </AlertDescription>
                       </Alert>

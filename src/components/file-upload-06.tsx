@@ -120,7 +120,7 @@ export default function FileUpload06() {
                                 } : u
                             ));
                         }
-                    } catch (error) {
+                    } catch (_error) {
                         clearInterval(pollInterval);
                         setUploads(prev => prev.map(u =>
                             u.id === uploadItem.id ? {
@@ -132,12 +132,12 @@ export default function FileUpload06() {
                     }
                 }, 1000);
 
-            } catch (error: any) {
+            } catch (_error: unknown) {
                 setUploads(prev => prev.map(u =>
                     u.id === uploadItem.id ? {
                         ...u,
                         status: "error",
-                        error: error.message || 'Upload failed'
+                        error: 'Upload failed'
                     } : u
                 ));
             }

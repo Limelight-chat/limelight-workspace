@@ -3,19 +3,18 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Key, 
-  Link, 
-  BarChart3, 
-  Tag, 
-  Clock, 
-  Network, 
-  CheckCircle, 
+import {
+  ChevronDown,
+  ChevronRight,
+  Key,
+  Link,
+  BarChart3,
+  Tag,
+  Clock,
+  Network,
+  CheckCircle,
   AlertTriangle,
   Info,
   Database
@@ -153,7 +152,7 @@ export default function EnhancedFileMetadata({ metadata }: EnhancedFileMetadataP
                   )}
                   <span className="font-medium">{metadata.original_filename}</span>
                 </div>
-                
+
                 {/* Quick status indicators */}
                 <div className="flex items-center space-x-2">
                   {metadata.graph_readiness.is_ready ? (
@@ -167,17 +166,17 @@ export default function EnhancedFileMetadata({ metadata }: EnhancedFileMetadataP
                       Limited
                     </Badge>
                   )}
-                  
+
                   <Badge variant="outline">
                     {metadata.row_count.toLocaleString()} rows
                   </Badge>
-                  
+
                   <Badge variant="outline">
                     {metadata.relationships.length} connections
                   </Badge>
                 </div>
               </div>
-              
+
               <div className="text-sm text-muted-foreground">
                 {formatDate(metadata.uploaded_at)}
               </div>
@@ -188,7 +187,7 @@ export default function EnhancedFileMetadata({ metadata }: EnhancedFileMetadataP
         <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="space-y-6">
-              
+
               {/* Column Classifications */}
               <div>
                 <h4 className="font-medium mb-3 flex items-center">
@@ -271,16 +270,16 @@ export default function EnhancedFileMetadata({ metadata }: EnhancedFileMetadataP
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Overall Quality Score</span>
                     <div className="flex items-center space-x-2">
-                      <Progress 
-                        value={metadata.graph_readiness.quality_score * 100} 
-                        className="w-24 h-2" 
+                      <Progress
+                        value={metadata.graph_readiness.quality_score * 100}
+                        className="w-24 h-2"
                       />
                       <span className="text-sm font-medium">
                         {formatPercentage(metadata.graph_readiness.quality_score)}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
                       {metadata.graph_readiness.has_primary_key ? (
@@ -290,7 +289,7 @@ export default function EnhancedFileMetadata({ metadata }: EnhancedFileMetadataP
                       )}
                       <span className="text-sm">Primary Key</span>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       {metadata.graph_readiness.has_relationships ? (
                         <CheckCircle className="w-4 h-4 text-green-500" />

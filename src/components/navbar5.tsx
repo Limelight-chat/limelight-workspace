@@ -1,6 +1,6 @@
 "use client";
 
-import { MenuIcon, LayoutGrid } from "lucide-react";
+import { MenuIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
