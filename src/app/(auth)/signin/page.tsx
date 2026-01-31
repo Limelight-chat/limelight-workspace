@@ -7,7 +7,7 @@ import { Navbar5 } from '@/components/navbar5'
 
 export default function SignIn() {
     const router = useRouter()
-    const [isSignUp, setIsSignUp] = useState(true) // Default to Sign Up as requested
+    const [isSignUp, setIsSignUp] = useState(true) // Default to Sign Up
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
@@ -21,7 +21,7 @@ export default function SignIn() {
         try {
             if (isSignUp) {
                 // Sign Up flow
-                const { error } = await supabase.auth.signUp({
+                const { data, error } = await supabase.auth.signUp({
                     email,
                     password,
                     options: {
@@ -29,10 +29,19 @@ export default function SignIn() {
                     },
                 })
                 if (error) throw error
-                setMessage({
-                    text: 'Check your email to confirm your account!',
-                    type: 'success',
-                })
+
+                // Check if user is already confirmed or if email was sent
+                if (data.user && data.user.identities && data.user.identities.length === 0) {
+                    setMessage({
+                        text: 'This email is already registered. Please sign in.',
+                        type: 'error',
+                    })
+                } else {
+                    setMessage({
+                        text: 'Check your email to confirm your account!',
+                        type: 'success',
+                    })
+                }
             } else {
                 // Sign In flow
                 const { error } = await supabase.auth.signInWithPassword({
@@ -44,8 +53,8 @@ export default function SignIn() {
                 router.push('/')
                 router.refresh()
             }
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+        } catch (error: any) {
+            const errorMessage = error.message || 'An error occurred';
             setMessage({
                 text: errorMessage,
                 type: 'error',
@@ -179,10 +188,7 @@ export default function SignIn() {
 
                 {/* Right Side: Visual */}
                 <div className="hidden md:block relative bg-[#E67820]/10 overflow-hidden my-8 mr-6 sm:mr-12 md:mr-16 lg:mr-24 rounded-3xl">
-                    {/* This replicates the colored box/image area from the reference */}
                     <div className="absolute inset-0 bg-gradient-to-br from-[#E67820] to-[#b04d16] opacity-90"></div>
-
-                    {/* Abstract placeholder visual */}
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-[#f5f5f0] opacity-20 font-serif text-9xl italic">
                             Aa
