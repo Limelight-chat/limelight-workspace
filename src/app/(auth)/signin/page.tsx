@@ -60,12 +60,12 @@ export default function SignIn() {
             <Navbar5 />
 
             {/* Main Content Grid */}
-            <main className="grid md:grid-cols-2 min-h-screen pt-20">
+            <main className="grid md:grid-cols-2 min-h-[calc(100vh-5rem)] pt-20 overflow-x-hidden">
 
                 {/* Left Side: Auth & Hero Text */}
-                <div className="flex flex-col justify-center px-8 md:px-24 lg:px-32 py-8">
+                <div className="flex flex-col justify-center px-6 sm:px-12 md:px-16 lg:px-24 py-8">
                     <div className="mb-8">
-                        <h1 className="font-helvetica text-5xl md:text-6xl leading-[1.1] mb-4 text-[#f5f5f0]">
+                        <h1 className="font-helvetica text-4xl sm:text-5xl md:text-5xl lg:text-6xl leading-[1.1] mb-4 text-[#f5f5f0]">
                             The search engine <br />
                             from the future.
                         </h1>
@@ -178,7 +178,7 @@ export default function SignIn() {
                 </div>
 
                 {/* Right Side: Visual */}
-                <div className="hidden md:block relative bg-[#E67820]/10 overflow-hidden m-4 rounded-3xl">
+                <div className="hidden md:block relative bg-[#E67820]/10 overflow-hidden my-8 mr-6 sm:mr-12 md:mr-16 lg:mr-24 rounded-3xl">
                     {/* This replicates the colored box/image area from the reference */}
                     <div className="absolute inset-0 bg-gradient-to-br from-[#E67820] to-[#b04d16] opacity-90"></div>
 
