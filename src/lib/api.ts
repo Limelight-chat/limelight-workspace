@@ -411,8 +411,33 @@ export const api = {
     return response.json()
   },
 
+  // Submit query verification/clarification
+  async verifyQuery(sessionId: string, feedback: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/query/verify`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        feedback: feedback
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw error
+    }
+
+    return response.json()
+  },
+
   // Delete history item
   async deleteQueryHistoryItem(historyId: string) {
+
     const headers = await getAuthHeaders()
 
     const response = await fetch(`${API_URL}/api/history/${historyId}`, {

@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation'
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
 
+import { VerificationRequest } from "@/components/chat/VerificationRequest"
+
 interface QueryResult {
   sql: string
   rows: Array<Record<string, any>>
@@ -18,6 +20,14 @@ interface QueryResult {
   truncated: boolean
   summary: string | null
   execution_time: number
+  pipeline_trace?: {
+    intent?: string
+    status?: string
+    session_id?: string
+    analytical_plan?: any
+    formula?: string
+    plan?: any
+  }
 }
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -65,6 +75,7 @@ export default function Chat() {
     setQueryLoading(true)
     setQueryError(null)
     setSourceData(null) // Reset source data for new query
+    setQueryResult(null) // Reset previous result
 
     try {
       // Get all table IDs to query
@@ -103,6 +114,11 @@ export default function Chat() {
     } finally {
       setQueryLoading(false)
     }
+  }
+
+  const handleVerificationSuccess = (newResult: QueryResult) => {
+    console.log("Verification successful, updating result:", newResult)
+    setQueryResult(newResult)
   }
 
   // Extract tables used from SQL query
@@ -294,6 +310,16 @@ export default function Chat() {
 
                   <div className="mt-6">
                     <h3 className="text-sm font-semibold text-slate-400 uppercase mb-3">Output</h3>
+
+                    {/* VERIFICATION UI */}
+                    {(queryResult?.pipeline_trace?.status === 'VERIFICATION_REQUIRED' ||
+                      queryResult?.pipeline_trace?.status === 'MISSING_RELATIONSHIP') && (
+                        <VerificationRequest
+                          pipelineTrace={queryResult.pipeline_trace}
+                          onSuccess={handleVerificationSuccess}
+                        />
+                      )}
+
                     {queryLoading ? (
                       <div className="bg-[#131313] rounded-2xl p-8 text-center">
                         <div className="text-slate-400">Executing query...</div>
@@ -320,14 +346,16 @@ export default function Chat() {
                           Executed in {queryResult.execution_time.toFixed(2)}s
                         </div>
                       </>
-                    ) : queryResult ? (
+                    ) : queryResult && queryResult.pipeline_trace?.status !== 'VERIFICATION_REQUIRED' && queryResult.pipeline_trace?.status !== 'MISSING_RELATIONSHIP' ? (
                       <div className="bg-[#131313] rounded-2xl p-8 text-center">
                         <div className="text-slate-400">No results found</div>
                       </div>
                     ) : (
-                      <div className="bg-[#131313] rounded-2xl p-8 text-center">
-                        <div className="text-slate-400">Submit a query to see results</div>
-                      </div>
+                      !queryResult && (
+                        <div className="bg-[#131313] rounded-2xl p-8 text-center">
+                          <div className="text-slate-400">Submit a query to see results</div>
+                        </div>
+                      )
                     )}
                   </div>
                 </>

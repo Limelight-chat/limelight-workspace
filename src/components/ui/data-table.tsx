@@ -34,7 +34,7 @@ export function DataTable<TData, TValue>({
         getSortedRowModel: getSortedRowModel(),
         initialState: {
             pagination: {
-                pageSize: 200, // Default rows per page as requested (100-500 ish)
+                pageSize: 10,
             },
         },
         state: {
@@ -42,18 +42,47 @@ export function DataTable<TData, TValue>({
         },
     })
 
+    // Pagination Logic for "Previous 1 2 ... 9 10 Next"
+    const pageIndex = table.getState().pagination.pageIndex
+    const pageCount = table.getPageCount()
+
+    // Helper to generate page numbers
+    const getPageNumbers = () => {
+        const pages = []
+        const maxVisiblePages = 5 // Total numbers to show including ellipsis
+
+        if (pageCount <= maxVisiblePages) {
+            for (let i = 0; i < pageCount; i++) {
+                pages.push(i)
+            }
+        } else {
+            // Always show first, last, and current window
+            if (pageIndex < 3) {
+                // Near start: 1 2 3 ... 10
+                pages.push(0, 1, 2, 'ellipsis', pageCount - 1)
+            } else if (pageIndex > pageCount - 4) {
+                // Near end: 1 ... 8 9 10
+                pages.push(0, 'ellipsis', pageCount - 3, pageCount - 2, pageCount - 1)
+            } else {
+                // Middle: 1 ... 4 5 6 ... 10
+                pages.push(0, 'ellipsis', pageIndex - 1, pageIndex, pageIndex + 1, 'ellipsis', pageCount - 1)
+            }
+        }
+        return pages
+    }
+
     return (
-        <div className="bg-[#131313] rounded-2xl overflow-hidden border border-[#232222]">
+        <div className="bg-[#131313] rounded-2xl overflow-hidden border border-[#232222] shadow-sm">
             <div className={`overflow-x-auto ${maxHeight} overflow-y-auto`}>
-                <table className="w-full text-sm">
-                    <thead className="border-b border-[#232222] sticky top-0 bg-[#1a1919] z-10">
+                <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-400 uppercase bg-[#1a1919] border-b border-[#232222] sticky top-0 z-10">
                         {table.getHeaderGroups().map((headerGroup) => (
                             <tr key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
                                     return (
                                         <th
                                             key={header.id}
-                                            className="text-left px-4 py-3.5 text-slate-400 font-medium whitespace-nowrap"
+                                            className="px-6 py-4 font-semibold tracking-wide whitespace-nowrap"
                                         >
                                             {header.isPlaceholder ? null : (
                                                 <div
@@ -84,17 +113,17 @@ export function DataTable<TData, TValue>({
                             </tr>
                         ))}
                     </thead>
-                    <tbody className="divide-y divide-[#232222]/50">
+                    <tbody className="divide-y divide-[#232222]">
                         {table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <tr
                                     key={row.id}
-                                    className="even:bg-[#1a1919]/50 hover:bg-[#1f1e1e] transition-colors"
+                                    className="bg-transparent hover:bg-[#1f1e1e] transition-colors group"
                                 >
                                     {row.getVisibleCells().map((cell) => (
                                         <td
                                             key={cell.id}
-                                            className="px-4 py-3 text-slate-300 whitespace-nowrap"
+                                            className="px-6 py-4 text-slate-300 whitespace-nowrap font-medium"
                                         >
                                             {flexRender(
                                                 cell.column.columnDef.cell,
@@ -108,61 +137,76 @@ export function DataTable<TData, TValue>({
                             <tr>
                                 <td
                                     colSpan={columns.length}
-                                    className="h-24 text-center text-slate-500"
+                                    className="h-32 text-center text-slate-500"
                                 >
-                                    No results.
+                                    No results found.
                                 </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
-            <div className="bg-[#1a1919] border-t border-[#232222] px-4 py-2 text-xs text-slate-500 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <span>
-                        {table.getFilteredRowModel().rows.length} row{table.getFilteredRowModel().rows.length !== 1 ? 's' : ''} loaded
-                    </span>
-                    <span className="text-slate-600">|</span>
-                    <span className="flex items-center gap-1">
-                        Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-                    </span>
+
+            {/* Pagination Footer */}
+            <div className="bg-[#131313] border-t border-[#232222] px-6 py-4 flex items-center justify-between">
+
+                {/* Previous Button */}
+                <button
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-400 bg-transparent border border-[#333] rounded-full hover:bg-[#232222] hover:text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                </button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                    {getPageNumbers().map((page, idx) => (
+                        page === 'ellipsis' ? (
+                            <span key={`ellipsis-${idx}`} className="px-2 text-slate-600">...</span>
+                        ) : (
+                            <button
+                                key={page}
+                                onClick={() => table.setPageIndex(page as number)}
+                                className={`
+                                    w-8 h-8 flex items-center justify-center rounded-full text-xs font-medium transition-all
+                                    ${pageIndex === page
+                                        ? 'bg-[#232222] text-slate-100 font-bold'
+                                        : 'text-slate-500 hover:bg-[#1a1919] hover:text-slate-300'
+                                    }
+                                `}
+                            >
+                                {(page as number) + 1}
+                            </button>
+                        )
+                    ))}
                 </div>
 
+                {/* Right Side: Next Button + Rows Per Page */}
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <span className="text-slate-500">Rows per page:</span>
-                        <select
-                            value={table.getState().pagination.pageSize}
-                            onChange={e => {
-                                table.setPageSize(Number(e.target.value))
-                            }}
-                            className="bg-[#232222] border border-[#2e2d2d] rounded px-1 py-0.5 text-slate-300 text-xs focus:outline-hidden cursor-pointer"
-                        >
-                            {[100, 200, 500].map(pageSize => (
-                                <option key={pageSize} value={pageSize}>
-                                    {pageSize}
-                                </option>
-                            ))}
-                            <option value={data.length}>All</option>
-                        </select>
-                    </div>
+                    <button
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-400 bg-transparent border border-[#333] rounded-full hover:bg-[#232222] hover:text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                    >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
 
-                    <div className="flex items-center gap-1">
-                        <button
-                            className="p-1 rounded-md hover:bg-[#232222] disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                            onClick={() => table.previousPage()}
-                            disabled={!table.getCanPreviousPage()}
-                        >
-                            <ChevronLeft className="w-4 h-4 text-slate-400" />
-                        </button>
-                        <button
-                            className="p-1 rounded-md hover:bg-[#232222] disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                            onClick={() => table.nextPage()}
-                            disabled={!table.getCanNextPage()}
-                        >
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
-                        </button>
-                    </div>
+                    <select
+                        value={table.getState().pagination.pageSize}
+                        onChange={e => {
+                            table.setPageSize(Number(e.target.value))
+                        }}
+                        className="bg-transparent border border-[#333] rounded-md px-2 py-1 text-slate-400 text-xs focus:outline-hidden hover:border-[#444] cursor-pointer transition-colors"
+                    >
+                        {[10, 50, 100].map(pageSize => (
+                            <option key={pageSize} value={pageSize}>
+                                {pageSize} / page
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
         </div>
