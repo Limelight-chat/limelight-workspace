@@ -183,17 +183,8 @@ export function DataTable<TData, TValue>({
                     ))}
                 </div>
 
-                {/* Right Side: Next Button + Rows Per Page */}
+                {/* Right Side: Rows Per Page + Next Button */}
                 <div className="flex items-center gap-4">
-                    <button
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-400 bg-transparent border border-[#333] rounded-full hover:bg-[#232222] hover:text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                        onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
-                    >
-                        Next
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
-
                     <select
                         value={table.getState().pagination.pageSize}
                         onChange={e => {
@@ -207,6 +198,15 @@ export function DataTable<TData, TValue>({
                             </option>
                         ))}
                     </select>
+
+                    <button
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-400 bg-transparent border border-[#333] rounded-full hover:bg-[#232222] hover:text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                    >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
         </div>
