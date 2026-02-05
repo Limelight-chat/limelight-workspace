@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession()
@@ -228,7 +228,7 @@ export const api = {
   },
 
   // Execute query
-  async executeQuery(query: string, tableIds?: string[], unlimitedRows: boolean = false, excludeFromHistory: boolean = false) {
+  async executeQuery(query: string, tableIds?: string[], unlimitedRows: boolean = false, excludeFromHistory: boolean = false, sessionId?: string) {
     const headers = await getAuthHeaders()
 
     const response = await fetch(`${API_URL}/api/query`, {
@@ -241,7 +241,8 @@ export const api = {
         query,
         table_ids: tableIds,
         unlimited_rows: unlimitedRows,
-        exclude_from_history: excludeFromHistory
+        exclude_from_history: excludeFromHistory,
+        session_id: sessionId,
       }),
     })
 
@@ -411,6 +412,26 @@ export const api = {
     return response.json()
   },
 
+  // Share a history item (converts to session)
+  async shareHistoryItem(historyId: string) {
+    const headers = await getAuthHeaders()
+    const response = await fetch(`${API_URL}/api/history/${historyId}/publish`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to share history item')
+    }
+
+    return response.json()
+  },
+
   // Submit query verification/clarification
   async verifyQuery(sessionId: string, feedback: string) {
     const headers = await getAuthHeaders()
@@ -465,6 +486,113 @@ export const api = {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.detail || 'Failed to re-run query')
+    }
+
+    return response.json()
+  },
+
+  // =============================================================================
+  // Chat Session Methods
+  // =============================================================================
+
+  // Create a new chat session
+  async createSession(title?: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/sessions`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ title }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to create session')
+    }
+
+    return response.json()
+  },
+
+  // List all sessions for current user
+  async listSessions(limit: number = 50, offset: number = 0) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/sessions?limit=${limit}&offset=${offset}`, {
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to list sessions')
+    }
+
+    return response.json()
+  },
+
+  // Get a session with all messages
+  async getSession(sessionId: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/sessions/${sessionId}`, {
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to get session')
+    }
+
+    return response.json()
+  },
+
+  // Get a public shared session (no auth required)
+  async getSharedSession(shareId: string) {
+    const response = await fetch(`${API_URL}/api/sessions/share/${shareId}`)
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to get shared session')
+    }
+
+    return response.json()
+  },
+
+  // Update a session (title, is_public)
+  async updateSession(sessionId: string, updates: { title?: string; is_public?: boolean }) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to update session')
+    }
+
+    return response.json()
+  },
+
+  // Delete a session
+  async deleteSession(sessionId: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/sessions/${sessionId}`, {
+      method: 'DELETE',
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to delete session')
     }
 
     return response.json()

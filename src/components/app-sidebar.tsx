@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
+import { NavHistory } from "@/components/nav-history";
 import { useSidebar } from "@/components/ui/sidebar"
 import { TeamSwitcher } from "@/components/team-switcher";
 import { NavUser } from "@/components/nav-user"
@@ -106,6 +107,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarHeader>
             <SidebarContent>
                 <NavMain items={staticData.navMain} />
+                <NavHistory />
             </SidebarContent>
             <SidebarFooter>
                 <NavUser user={user} />

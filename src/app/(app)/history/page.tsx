@@ -3,10 +3,20 @@
 import { useEffect, useState } from 'react'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { api } from '@/lib/api'
-import { Search, Trash2, X, Loader2 } from 'lucide-react'
+import { Search, Trash2, X, Loader2, Share, Copy, Check, Info } from 'lucide-react'
 import { DataTable } from '@/components/ui/data-table'
 import { ColumnDef } from '@tanstack/react-table'
 import { useRouter } from 'next/navigation'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogClose
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 interface HistoryItem {
     id: string
@@ -40,6 +50,13 @@ export default function HistoryPage() {
     const [selectMode, setSelectMode] = useState(false)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+    // Share state
+    const [shareModalOpen, setShareModalOpen] = useState(false)
+    const [shareUrl, setShareUrl] = useState('')
+    const [shareLoading, setShareLoading] = useState(false)
+    const [shareError, setShareError] = useState<string | null>(null)
+    const [copied, setCopied] = useState(false)
+
     // Result modal state
     const [resultModal, setResultModal] = useState<{
         visible: boolean
@@ -70,6 +87,30 @@ export default function HistoryPage() {
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleShare = async (item: HistoryItem, e: React.MouseEvent) => {
+        e.stopPropagation()
+        setShareModalOpen(true)
+        setShareUrl('')
+        setShareError(null)
+        setShareLoading(true)
+
+        try {
+            const session = await api.shareHistoryItem(item.id)
+            setShareUrl(`${window.location.origin}/share/${session.share_id}`)
+        } catch (err) {
+            console.error("Failed to share:", err)
+            setShareError(err instanceof Error ? err.message : 'Failed to generate share link')
+        } finally {
+            setShareLoading(false)
+        }
+    }
+
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(shareUrl)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
     }
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -289,15 +330,25 @@ export default function HistoryPage() {
                                                 </p>
                                             </div>
 
-                                            {/* Delete button (visible on hover, not in select mode) */}
+                                            {/* Action buttons (visible on hover, not in select mode) */}
                                             {!selectMode && (
-                                                <button
-                                                    onClick={(e) => handleDelete(item.id, e)}
-                                                    disabled={deleting === item.id}
-                                                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all">
+                                                    <button
+                                                        onClick={(e) => handleShare(item, e)}
+                                                        className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all mr-1"
+                                                        title="Share result"
+                                                    >
+                                                        <Share className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDelete(item.id, e)}
+                                                        disabled={deleting === item.id}
+                                                        className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                                        title="Delete query"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -374,6 +425,62 @@ export default function HistoryPage() {
                         </div>
                     </div>
                 )}
+                {/* Share Modal */}
+                <Dialog open={shareModalOpen} onOpenChange={setShareModalOpen}>
+                    <DialogContent className="bg-[#242424] border-0 text-slate-100 shadow-2xl max-w-md rounded-xl p-6">
+                        <DialogHeader className="mb-4">
+                            <DialogTitle className="font-serif text-2xl font-normal text-[#f5f5f5]">
+                                Share this query
+                            </DialogTitle>
+                            <DialogDescription className="text-slate-400 text-base">
+                                Create a public link to share this result with others.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 bg-[#1a1a1a] p-1.5 rounded-lg border border-white/5 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
+                                <div className="flex-1 px-3">
+                                    {shareUrl ? (
+                                        <input
+                                            readOnly
+                                            value={shareUrl}
+                                            className="bg-transparent border-0 w-full text-sm text-slate-300 focus:outline-none placeholder:text-slate-600 font-mono"
+                                        />
+                                    ) : shareError ? (
+                                        <div className="text-sm text-red-400">
+                                            {shareError}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                            <div className="w-3 h-3 border-2 border-slate-500/30 border-t-slate-500 rounded-full animate-spin" />
+                                            {shareLoading ? "Generating link..." : "Ready to share"}
+                                        </div>
+                                    )}
+                                </div>
+                                <Button
+                                    size="sm"
+                                    onClick={copyToClipboard}
+                                    disabled={!shareUrl}
+                                    className={`h-8 px-4 font-medium transition-all ${copied
+                                        ? "bg-green-600 hover:bg-green-700 text-white"
+                                        : "bg-[#333] hover:bg-[#404040] text-slate-200"
+                                        }`}
+                                >
+                                    {copied ? "Copied" : "Copy Link"}
+                                </Button>
+                            </div>
+
+                            <div className="bg-[#2a2a2a] rounded-lg p-3 flex gap-3 items-start">
+                                <div className="mt-0.5 text-slate-400">
+                                    <Info className="w-4 h-4" />
+                                </div>
+                                <p className="text-xs text-slate-400 leading-relaxed">
+                                    This creates a snapshot of the current result. Re-share if the data updates.
+                                </p>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
         </ProtectedRoute>
     )
