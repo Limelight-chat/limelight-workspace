@@ -96,12 +96,15 @@ const CustomEdge = ({
     const strokeWidth = isPassive ? 2 : 2;
     const edgeStrokeDasharray = isPassive ? '4 4' : undefined;
 
+    const isDimmed = data?.isDimmed;
+    const finalOpacity = isDimmed ? 0.1 : (isPassive ? 0.6 : 1);
+
     return (
         <>
             <BaseEdge
                 path={edgePath}
                 markerEnd={markerEnd}
-                style={{ ...style, stroke: edgeColor, strokeWidth, strokeDasharray: edgeStrokeDasharray, opacity: isPassive ? 0.6 : 1 }}
+                style={{ ...style, stroke: edgeColor, strokeWidth, strokeDasharray: edgeStrokeDasharray, opacity: finalOpacity }}
             />
             <EdgeLabelRenderer>
                 <div
@@ -203,6 +206,7 @@ export default function RelationshipGraph() {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
     // Save node positions on drag stop
     const onNodeDragStop = useCallback((_: any, node: Node) => {
@@ -266,20 +270,63 @@ export default function RelationshipGraph() {
                     style: { strokeWidth: 2 }
                 }));
 
-            // Smart Layout Logic:
-            // If we have saved positions for MOST/sizeable nodes, use them.
-            // If we have NO saved positions, use Dagre.
-            // What if we have NEW nodes? They will be at (0,0). 
-            // We could run Dagre only for them? Too complex.
-            // Simple: If `!hasSavedPositions` -> Run Dagre.
-            // If `hasSavedPositions` -> Use rawNodes (saved positions apply).
+            // Smart Placement Logic:
+            // 1. Separate nodes into "existing" (with saved position) and "new" (no saved position)
+            const existingNodes: Node[] = [];
+            const newNodes: any[] = []; // raw table data
 
-            if (!hasSavedPositions) {
+            rawNodes.forEach((node, index) => {
+                // If this table ID exists in savedPositions, use it
+                if (savedPositions[node.id]) {
+                    existingNodes.push({ ...node, position: savedPositions[node.id] });
+                } else {
+                    newNodes.push(node);
+                }
+            });
+
+            // 2. Calculate bounding box of existing nodes
+            let maxX = 0;
+            let maxY = 0;
+
+            if (existingNodes.length > 0) {
+                existingNodes.forEach(n => {
+                    if (n.position.x > maxX) maxX = n.position.x;
+                    if (n.position.y > maxY) maxY = n.position.y;
+                });
+                // Add some padding to the right
+                maxX += 400;
+                // Reset Y to top for new grid
+                maxY = 0;
+            }
+
+            // 3. Place new nodes in a grid to the right of maxX
+            const GRID_COLUMNS = 3;
+            const X_SPACING = 350;
+            const Y_SPACING = 200;
+
+            const placedNewNodes = newNodes.map((node, index) => {
+                const col = index % GRID_COLUMNS;
+                const row = Math.floor(index / GRID_COLUMNS);
+
+                return {
+                    ...node,
+                    position: {
+                        x: maxX + (col * X_SPACING),
+                        y: maxY + (row * Y_SPACING)
+                    }
+                };
+            });
+
+            // 4. Combine
+            const finalNodes = [...existingNodes, ...placedNewNodes];
+
+            // If NO nodes had saved positions (first load ever), run Dagre for initial layout
+            if (!hasSavedPositions && existingNodes.length === 0) {
                 const layouted = getLayoutedElements(rawNodes, rawEdges);
                 setNodes(layouted.nodes);
                 setEdges(layouted.edges);
             } else {
-                setNodes(rawNodes);
+                setNodes(finalNodes);
                 setEdges(rawEdges);
             }
 
@@ -294,6 +341,36 @@ export default function RelationshipGraph() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    // Handle styling changes when selection changes
+    useEffect(() => {
+        setEdges((eds) =>
+            eds.map((edge) => {
+                // If nothing selected, reset
+                if (!selectedNodeId) {
+                    return { ...edge, data: { ...edge.data, isDimmed: false }, animated: false };
+                }
+
+                // Check connectivity
+                const isConnected = edge.source === selectedNodeId || edge.target === selectedNodeId;
+
+                return {
+                    ...edge,
+                    data: { ...edge.data, isDimmed: !isConnected },
+                    // Optional: animate connected edges?
+                    animated: isConnected
+                };
+            })
+        );
+    }, [selectedNodeId, setEdges]);
+
+    const onNodeClick = useCallback((_: any, node: Node) => {
+        setSelectedNodeId(node.id);
+    }, []);
+
+    const onPaneClick = useCallback(() => {
+        setSelectedNodeId(null);
+    }, []);
 
     if (loading && nodes.length === 0) {
         return <div className="flex items-center justify-center h-full text-muted-foreground animate-pulse">Loading Graph...</div>;
@@ -315,7 +392,9 @@ export default function RelationshipGraph() {
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
-                onNodeDragStop={onNodeDragStop} // Add persistence handler
+                onNodeDragStop={onNodeDragStop}
+                onNodeClick={onNodeClick}
+                onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 // fitView -> Only fit view if we just auto-layouted? Or generally good?
