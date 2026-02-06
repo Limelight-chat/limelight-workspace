@@ -111,11 +111,14 @@ export const api = {
         ).map((r: any) => ({
           target_table_id: r.from_table_id === table.id ? r.to_table_id : r.from_table_id,
           target_table_name: r.from_table_id === table.id ? r.to_table : r.from_table,
+          target_original_filename: r.from_table_id === table.id ? r.target_original_filename : r.source_original_filename,
           source_column: r.from_table_id === table.id ? r.from_column : r.to_column,
           target_column: r.from_table_id === table.id ? r.to_column : r.from_column,
           relationship_type: 'one_to_many', // Default/Inferred
           confidence_score: r.confidence_score,
-          sample_matches: 0
+          sample_matches: 0,
+          tier: r.tier,
+          status: r.status,
         }));
 
         // Determine readiness
@@ -370,6 +373,54 @@ export const api = {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.detail || 'Failed to reject relationship')
+    }
+
+    return response.json()
+  },
+
+  // Delete a relationship (active)
+  async deleteRelationship(candidateId: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/relationships/${candidateId}`, {
+      method: 'DELETE',
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to delete relationship')
+    }
+
+    return response.json()
+  },
+
+  // Submit relationship feedback (table+column specificity)
+  async submitRelationshipFeedback(payload: {
+    candidate_id?: string
+    from_table?: string
+    to_table?: string
+    from_column?: string
+    to_column?: string
+    action: "APPROVE" | "REJECT"
+  }) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/feedback/relationship`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: "", // backend overwrites with current user
+        ...payload
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to submit relationship feedback')
     }
 
     return response.json()

@@ -10,6 +10,7 @@ import {
     Link,
     CirclePlus,
     MessagesSquare,
+    GitGraph,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -43,6 +44,11 @@ const staticData = {
             title: "Library",
             url: "/library",
             icon: Bookmark,
+        },
+        {
+            title: "Graphs",
+            url: "/graphs",
+            icon: GitGraph,
         },
         {
             title: "Connections",

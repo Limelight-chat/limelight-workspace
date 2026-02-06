@@ -37,11 +37,14 @@ interface ColumnMetadata {
 interface RelationshipInfo {
   target_table_id: string;
   target_table_name: string;
+  target_original_filename?: string;
   source_column: string;
   target_column: string;
   relationship_type: 'one_to_one' | 'one_to_many' | 'many_to_one' | 'many_to_many';
   confidence_score: number;
   sample_matches: number;
+  tier?: 'tier_1_explicit' | 'tier_2_dimensional' | 'tier_3_semantic';
+  status?: 'active' | 'passive' | 'rejected';
 }
 
 interface GraphReadiness {
@@ -117,6 +120,46 @@ const getRelationshipTypeLabel = (type: string) => {
     default:
       return type;
   }
+};
+
+// User-friendly tier labels
+const getTierInfo = (tier?: string) => {
+  switch (tier) {
+    case 'tier_1_explicit':
+      return { label: 'Verified', color: 'bg-green-100 text-green-800', description: 'Primary key match' };
+    case 'tier_2_dimensional':
+      return { label: 'Inferred', color: 'bg-blue-100 text-blue-800', description: 'Column name match' };
+    case 'tier_3_semantic':
+      return { label: 'AI Suggested', color: 'bg-purple-100 text-purple-800', description: 'Semantic similarity' };
+    default:
+      return { label: 'Unknown', color: 'bg-gray-100 text-gray-800', description: '' };
+  }
+};
+
+// User-friendly status badges  
+const getStatusInfo = (status?: string) => {
+  switch (status) {
+    case 'active':
+      return { label: 'Active', color: 'bg-green-500 text-white', icon: '✓' };
+    case 'passive':
+      return { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: '○' };
+    case 'rejected':
+      return { label: 'Rejected', color: 'bg-red-100 text-red-800', icon: '✕' };
+    default:
+      return { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: '○' };
+  }
+};
+
+// Extract semantic name from original filename (remove extension)
+const getSemanticName = (originalFilename?: string, tableName?: string) => {
+  if (originalFilename) {
+    return originalFilename.replace(/\.(csv|xlsx|xls)$/i, '').replace(/_/g, ' ');
+  }
+  // Fallback: strip timestamp suffix from table name
+  if (tableName) {
+    return tableName.replace(/_\d{13,}$/, '').replace(/^data_/, '').replace(/_/g, ' ');
+  }
+  return 'Unknown';
 };
 
 export default function EnhancedFileMetadata({ metadata }: EnhancedFileMetadataProps) {
@@ -232,30 +275,65 @@ export default function EnhancedFileMetadata({ metadata }: EnhancedFileMetadataP
                     <Network className="w-4 h-4 mr-2" />
                     Relationships ({metadata.relationships.length})
                   </h4>
-                  <div className="space-y-2">
-                    {metadata.relationships.map((rel, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <Link className="w-4 h-4 text-blue-500" />
-                          <div>
-                            <div className="font-mono text-sm">
-                              {rel.source_column} → {rel.target_table_name}.{rel.target_column}
+                  <div className="space-y-3">
+                    {metadata.relationships.map((rel, index) => {
+                      const tierInfo = getTierInfo(rel.tier);
+                      const statusInfo = getStatusInfo(rel.status);
+                      const semanticTarget = getSemanticName(rel.target_original_filename, rel.target_table_name);
+
+                      return (
+                        <div key={index} className="p-4 bg-muted/30 rounded-lg border border-muted">
+                          {/* Main relationship display - semantic names */}
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <Link className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                              <div>
+                                <div className="font-medium text-base capitalize">
+                                  {rel.source_column} → {semanticTarget}
+                                </div>
+                                {/* Original table name in muted text */}
+                                <div className="text-xs text-muted-foreground font-mono">
+                                  {rel.target_table_name}.{rel.target_column}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {getRelationshipTypeLabel(rel.relationship_type)} relationship
+
+                            {/* Confidence score */}
+                            <div className="text-right flex-shrink-0 ml-4">
+                              <div className="text-lg font-semibold">
+                                {formatPercentage(rel.confidence_score)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">confidence</div>
                             </div>
+                          </div>
+
+                          {/* Badges row: Tier + Status + Relationship type */}
+                          <div className="flex items-center gap-2 mt-3">
+                            {/* Tier badge */}
+                            <Badge className={`${tierInfo.color} text-xs`} variant="secondary">
+                              {tierInfo.label}
+                            </Badge>
+
+                            {/* Status badge */}
+                            <Badge className={`${statusInfo.color} text-xs`} variant="secondary">
+                              {statusInfo.icon} {statusInfo.label}
+                            </Badge>
+
+                            {/* Relationship type */}
+                            <Badge variant="outline" className="text-xs">
+                              {getRelationshipTypeLabel(rel.relationship_type)}
+                            </Badge>
+
+                            {/* Tier description tooltip-like text */}
+                            {tierInfo.description && (
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                {tierInfo.description}
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {formatPercentage(rel.confidence_score)} confidence
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {rel.sample_matches} matches
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

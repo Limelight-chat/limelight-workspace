@@ -22,6 +22,14 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { FileText, Trash2, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Table {
   id: string;
@@ -146,6 +154,10 @@ export default function Database() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Deletion UI State
+  const [deleteTableId, setDeleteTableId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const fetchTables = async () => {
     try {
       setLoading(true);
@@ -174,16 +186,18 @@ export default function Database() {
     };
   }, []);
 
-  const handleDelete = async (tableId: string) => {
-    if (!confirm("Are you sure you want to delete this file?")) {
-      return;
-    }
+  const confirmDelete = async () => {
+    if (!deleteTableId) return;
 
     try {
-      await api.deleteTable(tableId);
-      setTables(tables.filter(t => t.id !== tableId));
+      setIsDeleting(true);
+      await api.deleteTable(deleteTableId);
+      setTables(tables.filter(t => t.id !== deleteTableId));
+      setDeleteTableId(null);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to delete file");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -223,7 +237,7 @@ export default function Database() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(table.id)}
+                        onClick={() => setDeleteTableId(table.id)}
                         aria-label="Delete file"
                         className="hover:bg-[#363535]"
                       >
@@ -276,6 +290,43 @@ export default function Database() {
             </div>
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!deleteTableId} onOpenChange={(open) => !open && setDeleteTableId(null)}>
+          <DialogContent className="sm:max-w-md bg-[#191919] border-[#2a2a2a]">
+            <DialogHeader>
+              <DialogTitle>Delete File</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Are you sure you want to delete this file? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setDeleteTableId(null)}
+                className="hover:bg-[#2a2a2a]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ProtectedRoute>
   );

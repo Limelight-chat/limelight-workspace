@@ -192,4 +192,49 @@
     scrollbar-width: thin;
     scrollbar-color: oklch(0.4 0 0) transparent;
   }
+
+  /* React Flow Dark Theme Overrides */
+  .react-flow__controls {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .react-flow__controls-button {
+    background-color: #1C1C1E !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    color: #a1a1aa !important;
+    fill: #a1a1aa !important;
+    transition: all 0.2s ease;
+  }
+
+  .react-flow__controls-button:hover {
+    background-color: #27272a !important;
+    color: #ffffff !important;
+    fill: #ffffff !important;
+  }
+
+  .react-flow__controls-button svg {
+    fill: currentColor !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .react-flow__minimap {
+    background-color: #171516 !important;
+    border-radius: 20px !important;
+    /* More curved corners */
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+    width: 150px !important;
+    /* Smaller width */
+    height: 100px !important;
+    /* Smaller height */
+  }
+
+  .react-flow__attribution {
+    display: none !important;
+    /* Hide React Flow attribution */
+  }
 }

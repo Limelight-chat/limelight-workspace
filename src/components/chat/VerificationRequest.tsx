@@ -1,26 +1,30 @@
 import React, { useState, useEffect } from "react"
-import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, ChartColumn } from "lucide-react"
 import { api } from "@/lib/api"
 import { Loader2 } from "lucide-react"
 
 interface VerificationRequestProps {
     pipelineTrace: any
     onSuccess: (result: any) => void
+    onRelationshipsApproved?: () => void
 }
 
-export function VerificationRequest({ pipelineTrace, onSuccess }: VerificationRequestProps) {
+export function VerificationRequest({ pipelineTrace, onSuccess, onRelationshipsApproved }: VerificationRequestProps) {
     const [feedback, setFeedback] = useState("")
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     const sessionId = pipelineTrace.session_id
     const plan = pipelineTrace.analytical_plan || {}
+    const relationshipCandidates = pipelineTrace.relationship_candidates || []
 
     // Extract the "question" from the plan if available
     // The backend might return "missing_terms" list
     const missingInfo = plan.missing_terms?.join(", ") || "Specific logic"
 
-    const isRelationshipMode = plan.status === "MISSING_RELATIONSHIP"
+    const isRelationshipMode = plan.status === "MISSING_RELATIONSHIP" ||
+        pipelineTrace.verification_required ||
+        relationshipCandidates.length > 0
 
     // Reset feedback when the requirement changes to avoid stale text
     useEffect(() => {
@@ -31,25 +35,56 @@ export function VerificationRequest({ pipelineTrace, onSuccess }: VerificationRe
     // Heuristic: Extract suggestion from explanation if possible, or just look for common columns in the UI later. 
     // Ideally backend sends this. For now let's assume the explanation contains the hint or we genericize.
 
-    const handleConfirm = () => {
-        setFeedback("Yes, link them as suggested.")
-        // We trigger submit immediately
-        setTimeout(() => handleSubmit("Yes, link them as suggested."), 100)
-    }
-
-    const handleSubmit = async (textOverride?: string) => {
-        const textToSend = textOverride || feedback
-        if (!textToSend.trim()) return
-
+    const handleApproveRelationships = async () => {
+        if (!relationshipCandidates.length) return
         setSubmitting(true)
         setError(null)
-
         try {
-            const result = await api.verifyQuery(sessionId, textToSend)
-            onSuccess(result)
+            for (const cand of relationshipCandidates) {
+                if (cand.id) {
+                    await api.confirmRelationship(cand.id)
+                } else {
+                    await api.submitRelationshipFeedback({
+                        from_table: cand.from_table,
+                        to_table: cand.to_table,
+                        from_column: cand.from_column,
+                        to_column: cand.to_column,
+                        action: "APPROVE"
+                    })
+                }
+            }
+            if (onRelationshipsApproved) {
+                onRelationshipsApproved()
+            }
         } catch (err: any) {
-            console.error("Verification failed:", err)
-            setError(err.message || "Failed to submit verification")
+            console.error("Relationship approval failed:", err)
+            setError(err.message || "Failed to approve relationships")
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    const handleRejectRelationships = async () => {
+        if (!relationshipCandidates.length) return
+        setSubmitting(true)
+        setError(null)
+        try {
+            for (const cand of relationshipCandidates) {
+                if (cand.id) {
+                    await api.rejectRelationship(cand.id)
+                } else {
+                    await api.submitRelationshipFeedback({
+                        from_table: cand.from_table,
+                        to_table: cand.to_table,
+                        from_column: cand.from_column,
+                        to_column: cand.to_column,
+                        action: "REJECT"
+                    })
+                }
+            }
+        } catch (err: any) {
+            console.error("Relationship rejection failed:", err)
+            setError(err.message || "Failed to reject relationships")
         } finally {
             setSubmitting(false)
         }
@@ -73,20 +108,46 @@ export function VerificationRequest({ pipelineTrace, onSuccess }: VerificationRe
                         </p>
                     </div>
 
-                    <div className="bg-[#171616] rounded-xl p-4 border border-[#2e2d2d]">
-                        <p className="text-sm text-slate-500 mb-2 uppercase font-semibold">Discovery Question</p>
-                        <p className="text-slate-300">
-                            {isRelationshipMode
-                                ? (plan.suggestion || "Should I auto-link these tables based on matching column names?")
-                                : `How should I calculate or define "${missingInfo}"? (e.g., "Use column X", "It means A / B", etc.)`
-                            }
-                        </p>
+                    <div className="bg-[#171616] rounded-xl p-4 border border-[#2e2d2d] space-y-3">
+                        <div className="flex items-center gap-2 text-orange-400">
+                            <ChartColumn className="w-4 h-4" />
+                            <span className="text-sm font-semibold uppercase tracking-wider">Suggested Links</span>
+                        </div>
+
+                        {isRelationshipMode && relationshipCandidates.length > 0 ? (
+                            <div className="space-y-2">
+                                {relationshipCandidates.map((c: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between bg-[#0a0a0a] p-3 rounded-lg border border-white/5">
+                                        <div className="flex items-center gap-3 text-sm">
+                                            <span className="text-slate-200 font-medium">{c.from_table}</span>
+                                            <span className="text-slate-500 text-xs px-1.5 py-0.5 bg-slate-800 rounded">{c.from_column}</span>
+                                            <span className="text-slate-600">→</span>
+                                            <span className="text-slate-200 font-medium">{c.to_table}</span>
+                                            <span className="text-slate-500 text-xs px-1.5 py-0.5 bg-slate-800 rounded">{c.to_column}</span>
+                                        </div>
+                                        {c.confidence_score !== undefined && (
+                                            <div className="text-xs text-emerald-500 font-mono">
+                                                {(c.confidence_score * 100).toFixed(0)}% Match
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-sm text-slate-500 italic">No specific candidates found.</div>
+                        )}
+
+                        <div className="pt-2 border-t border-white/5">
+                            <p className="text-sm text-slate-400">
+                                {plan.suggestion || "Should I link these tables based on the suggested columns?"}
+                            </p>
+                        </div>
                     </div>
 
                     {isRelationshipMode ? (
                         <div className="flex gap-3">
                             <button
-                                onClick={handleConfirm}
+                                onClick={relationshipCandidates.length ? handleApproveRelationships : undefined}
                                 disabled={submitting}
                                 className="flex-1 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-medium px-4 py-3 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
                             >
@@ -94,45 +155,16 @@ export function VerificationRequest({ pipelineTrace, onSuccess }: VerificationRe
                                 Yes, Link Them
                             </button>
                             <button
-                                onClick={() => {/* Toggle manual mode (future) */ }}
+                                onClick={handleRejectRelationships}
                                 disabled={submitting}
                                 className="flex-1 bg-[#2a2929] hover:bg-[#333] border border-[#3e3d3d] text-slate-300 font-medium px-4 py-3 rounded-xl transition-all"
                             >
-                                No, let me explain
+                                No
                             </button>
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            <textarea
-                                value={feedback}
-                                onChange={(e) => setFeedback(e.target.value)}
-                                placeholder="Type your explanation here..."
-                                className="w-full bg-[#2a2929] border border-[#3e3d3d] rounded-xl p-3 text-slate-200 placeholder:text-slate-600 focus:outline-hidden focus:border-orange-500/50 transition-colors resize-none h-24"
-                            />
-
-                            {error && (
-                                <div className="text-red-400 text-sm flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4" /> {error}
-                                </div>
-                            )}
-
-                            <div className="flex justify-end">
-                                <button
-                                    onClick={() => handleSubmit()}
-                                    disabled={submitting || !feedback.trim()}
-                                    className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                                >
-                                    {submitting ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 animate-spin" /> Verifying...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle2 className="w-4 h-4" /> Submit Clarification
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                        <div className="text-sm text-slate-400">
+                            Clarification is only supported for relationship linking right now.
                         </div>
                     )}
                 </div>

@@ -10,8 +10,8 @@ import { useAuthContext } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
-
 import { VerificationRequest } from "@/components/chat/VerificationRequest"
+
 
 interface QueryResult {
   sql: string
@@ -27,6 +27,10 @@ interface QueryResult {
     analytical_plan?: any
     formula?: string
     plan?: any
+    source_table_ids?: string[]
+    verification_required?: boolean
+    clarification?: any
+    relationship_candidates?: any[]
   }
 }
 
@@ -116,20 +120,23 @@ export default function Chat() {
     }
   }
 
-  const handleVerificationSuccess = (newResult: QueryResult) => {
-    console.log("Verification successful, updating result:", newResult)
-    setQueryResult(newResult)
-  }
-
   // Extract tables used from SQL query
   const getUsedTables = () => {
-    // If we have a successful result, show tables used in the SQL
-    if (queryResult?.sql) {
-      const usedTables = tables.filter(table => {
-        const tableNamePattern = new RegExp(`\\b${table.table_name}\\b`, 'i')
-        return tableNamePattern.test(queryResult.sql)
-      })
-      return usedTables
+    // If we have a successful result
+    if (queryResult) {
+      // PREFERRED: Use source_table_ids if available (backend explicitly identifies source tables)
+      if (queryResult.pipeline_trace?.source_table_ids && queryResult.pipeline_trace.source_table_ids.length > 0) {
+        return tables.filter(table => queryResult.pipeline_trace!.source_table_ids!.includes(table.id))
+      }
+
+      // FALLBACK: SQL Regex matching (legacy behavior)
+      if (queryResult.sql) {
+        const usedTables = tables.filter(table => {
+          const tableNamePattern = new RegExp(`\\b${table.table_name}\\b`, 'i')
+          return tableNamePattern.test(queryResult.sql)
+        })
+        return usedTables
+      }
     }
 
     // If we have an error and captured source tables, show those
@@ -311,15 +318,6 @@ export default function Chat() {
                   <div className="mt-6">
                     <h3 className="text-sm font-semibold text-slate-400 uppercase mb-3">Output</h3>
 
-                    {/* VERIFICATION UI */}
-                    {(queryResult?.pipeline_trace?.status === 'VERIFICATION_REQUIRED' ||
-                      queryResult?.pipeline_trace?.status === 'MISSING_RELATIONSHIP') && (
-                        <VerificationRequest
-                          pipelineTrace={queryResult.pipeline_trace}
-                          onSuccess={handleVerificationSuccess}
-                        />
-                      )}
-
                     {queryLoading ? (
                       <div className="bg-[#131313] rounded-2xl p-8 text-center">
                         <div className="text-slate-400">Executing query...</div>
@@ -346,10 +344,21 @@ export default function Chat() {
                           Executed in {queryResult.execution_time.toFixed(2)}s
                         </div>
                       </>
-                    ) : queryResult && queryResult.pipeline_trace?.status !== 'VERIFICATION_REQUIRED' && queryResult.pipeline_trace?.status !== 'MISSING_RELATIONSHIP' ? (
+                    ) : queryResult && queryResult.pipeline_trace?.status !== 'VERIFICATION_REQUIRED' && queryResult.pipeline_trace?.status !== 'MISSING_RELATIONSHIP' && !queryResult.pipeline_trace?.verification_required ? (
                       <div className="bg-[#131313] rounded-2xl p-8 text-center">
                         <div className="text-slate-400">No results found</div>
                       </div>
+                    ) : queryResult && (queryResult.pipeline_trace?.verification_required || queryResult.pipeline_trace?.status === 'VERIFICATION_REQUIRED' || queryResult.pipeline_trace?.status === 'MISSING_RELATIONSHIP') ? (
+                      <VerificationRequest
+                        pipelineTrace={queryResult.pipeline_trace}
+                        onSuccess={(result) => {
+                          setQueryResult(result)
+                        }}
+                        onRelationshipsApproved={async () => {
+                          // Re-run the query after approval
+                          await handleQuerySubmit(userQuery)
+                        }}
+                      />
                     ) : (
                       !queryResult && (
                         <div className="bg-[#131313] rounded-2xl p-8 text-center">
