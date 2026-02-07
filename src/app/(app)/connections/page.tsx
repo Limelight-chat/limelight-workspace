@@ -20,8 +20,10 @@ import { Button } from "@/components/ui/button";
 import FileUpload06 from "@/components/file-upload-06";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { FileText, Trash2, Loader2 } from "lucide-react";
+import { FileText, Trash2, Loader2, RefreshCw, FileSpreadsheet, FileIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { GooglePicker } from "@/components/google-picker";
+import { useSearchParams } from "next/navigation";
 
 interface Table {
   id: string;
@@ -29,6 +31,24 @@ interface Table {
   original_filename: string;
   uploaded_at: string;
   row_count?: number;
+}
+
+interface GoogleSyncedFile {
+  id: string;
+  google_file_id: string;
+  filename: string;
+  mime_type: string;
+  file_type: string;
+  sync_enabled: boolean;
+  last_synced_at?: string;
+  sync_status?: string;
+  sync_error?: string;
+  table_id?: string;
+  table_name?: string;
+  row_count?: number;
+  document_id?: string;
+  document_name?: string;
+  chunk_count?: number;
 }
 
 const ICONS = {
@@ -142,9 +162,14 @@ const Data = [
 ];
 
 export default function Database() {
+  const searchParams = useSearchParams();
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [googleStatus, setGoogleStatus] = useState<{ connected: boolean; email?: string } | null>(null);
+  const [syncedFiles, setSyncedFiles] = useState<GoogleSyncedFile[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
   const fetchTables = async () => {
     try {
@@ -159,8 +184,109 @@ export default function Database() {
     }
   };
 
+  const fetchGoogleStatus = async () => {
+    try {
+      const status = await api.getGoogleStatus();
+      setGoogleStatus(status);
+      if (status.connected) {
+        fetchSyncedFiles();
+      }
+    } catch (err: unknown) {
+      console.error("Failed to fetch Google status:", err);
+    }
+  };
+
+  const fetchSyncedFiles = async () => {
+    try {
+      const files = await api.getGoogleSyncedFiles();
+      setSyncedFiles(files);
+    } catch (err: unknown) {
+      console.error("Failed to fetch synced files:", err);
+    }
+  };
+
+  const handleGoogleConnect = async () => {
+    try {
+      const { authorization_url } = await api.getGoogleAuthUrl();
+      window.location.href = authorization_url;
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to connect Google");
+    }
+  };
+
+  const handleGoogleDisconnect = async () => {
+    if (!confirm("Are you sure you want to disconnect Google Drive?")) {
+      return;
+    }
+
+    try {
+      await api.disconnectGoogle();
+      setGoogleStatus({ connected: false });
+      setSyncedFiles([]);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to disconnect Google");
+    }
+  };
+
+  const handleFilesPicked = async (files: Array<{ file_id: string; mime_type: string; name: string }>) => {
+    setImporting(true);
+    setShowPicker(false);
+
+    try {
+      const result = await api.importGoogleFiles(files);
+
+      if (result.success.length > 0) {
+        alert(`Successfully imported ${result.success.length} file(s)`);
+        fetchSyncedFiles();
+        fetchTables();
+      }
+
+      if (result.failed.length > 0) {
+        alert(`Failed to import ${result.failed.length} file(s)`);
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to import files");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleRemoveSyncedFile = async (fileId: string) => {
+    if (!confirm("Are you sure you want to remove this file?")) {
+      return;
+    }
+
+    try {
+      await api.removeGoogleSyncedFile(fileId);
+      setSyncedFiles(syncedFiles.filter(f => f.id !== fileId));
+      fetchTables();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to remove file");
+    }
+  };
+
+  const handleSyncFile = async (fileId: string) => {
+    try {
+      await api.triggerGoogleSync(fileId);
+      alert("Sync triggered successfully");
+      fetchSyncedFiles();
+      fetchTables();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to sync file");
+    }
+  };
+
   useEffect(() => {
     fetchTables();
+    fetchGoogleStatus();
+
+    // Check for Google OAuth redirect
+    const googleParam = searchParams.get('google');
+    if (googleParam === 'connected') {
+      fetchGoogleStatus();
+      // Remove the query parameter from URL
+      window.history.replaceState({}, '', '/connections');
+    }
 
     // Listen for file upload events
     const handleFileUploaded = () => {
@@ -172,7 +298,7 @@ export default function Database() {
     return () => {
       window.removeEventListener('fileUploaded', handleFileUploaded);
     };
-  }, []);
+  }, [searchParams]);
 
   const handleDelete = async (tableId: string) => {
     if (!confirm("Are you sure you want to delete this file?")) {
@@ -236,6 +362,62 @@ export default function Database() {
             )}
           </div>
 
+          {/* Google Drive Files Section */}
+          {googleStatus?.connected && syncedFiles.length > 0 && (
+            <div className="sm:max-h-none overflow-x-auto sm:overflow-visible pr-2 bg-[#191919] border border-[#2a2a2a] rounded-xl p-6">
+              <h1 className="text-primary font-medium text-xl mb-4">Google Drive Files</h1>
+              <div className="grid gap-3">
+                {syncedFiles.map((file) => (
+                  <Card key={file.id} className="p-3 bg-[#232323] border-[#2f2e2e]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="grid size-9 shrink-0 place-content-center rounded border border-[#2f2e2e] bg-[#363535]">
+                          {file.file_type === 'sheet' ? (
+                            <FileSpreadsheet className="size-4" />
+                          ) : (
+                            <FileIcon className="size-4" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-sm">{file.filename}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {file.row_count ? `${file.row_count} rows` : file.chunk_count ? `${file.chunk_count} chunks` : ""}
+                            {file.last_synced_at && ` • ${new Date(file.last_synced_at).toLocaleDateString()}`}
+                            {file.sync_status === 'error' && (
+                              <span className="text-red-500"> • Sync error</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {file.file_type === 'sheet' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleSyncFile(file.id)}
+                            aria-label="Sync file"
+                            className="hover:bg-[#363535]"
+                          >
+                            <RefreshCw className="size-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveSyncedFile(file.id)}
+                          aria-label="Remove file"
+                          className="hover:bg-[#363535]"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Row 2: Upload Files */}
           <div className="pr-2 bg-[#191919] border border-[#2a2a2a] rounded-xl md:min-h-min p-6">
             <h1 className="text-primary font-medium text-xl mb-4">Upload Files to Folder</h1>
@@ -263,13 +445,55 @@ export default function Database() {
                     <div className="mb-1 text-base font-medium">{item.title}</div>
                     <div className="text-xs leading-snug text-muted-foreground text-left">{item.description}</div>
 
+                    {item.title === "Google Drive" && googleStatus?.connected && (
+                      <div className="text-xs text-green-500 mt-2">
+                        Connected as {googleStatus.email}
+                      </div>
+                    )}
 
-                    <Button
-                      className={`bg-[#FF7D0B] text-black rounded-md ml-auto mt-4 w-full sm:w-auto sm:absolute sm:bottom-4 sm:right-4 px-3 py-2 shadow-sm hover:bg-[#cc5f00] hover:text-black`}
-                      disabled={item.title !== "Google Drive"}
-                    >
-                      {item.title !== "Google Drive" ? "Coming Soon" : item.isConnected ? "Add Files" : "Connect"}
-                    </Button>
+                    {item.title === "Google Drive" ? (
+                      googleStatus?.connected ? (
+                        <div className="flex gap-2 ml-auto mt-4 w-full sm:w-auto sm:absolute sm:bottom-4 sm:right-4">
+                          {showPicker ? (
+                            <GooglePicker
+                              onFilesPicked={handleFilesPicked}
+                              onCancel={() => setShowPicker(false)}
+                            />
+                          ) : (
+                            <>
+                              <Button
+                                className="bg-[#FF7D0B] text-black rounded-md px-3 py-2 shadow-sm hover:bg-[#cc5f00] hover:text-black"
+                                onClick={() => setShowPicker(true)}
+                                disabled={importing}
+                              >
+                                {importing ? "Importing..." : "Choose Files"}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="px-3 py-2"
+                                onClick={handleGoogleDisconnect}
+                              >
+                                Disconnect
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <Button
+                          className="bg-[#FF7D0B] text-black rounded-md ml-auto mt-4 w-full sm:w-auto sm:absolute sm:bottom-4 sm:right-4 px-3 py-2 shadow-sm hover:bg-[#cc5f00] hover:text-black"
+                          onClick={handleGoogleConnect}
+                        >
+                          Connect
+                        </Button>
+                      )
+                    ) : (
+                      <Button
+                        className="bg-[#FF7D0B] text-black rounded-md ml-auto mt-4 w-full sm:w-auto sm:absolute sm:bottom-4 sm:right-4 px-3 py-2 shadow-sm hover:bg-[#cc5f00] hover:text-black"
+                        disabled
+                      >
+                        Coming Soon
+                      </Button>
+                    )}
                   </div>
                 );
               })}

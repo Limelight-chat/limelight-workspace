@@ -58,6 +58,21 @@ export function NavHistory() {
     }
   }
 
+  const handleShare = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      const updated = await api.updateSession(id, { is_public: true })
+      if (updated.share_id) {
+        const url = `${window.location.origin}/share/${updated.share_id}`
+        await navigator.clipboard.writeText(url)
+        alert("Share link copied to clipboard!")
+      }
+    } catch (error) {
+      console.error("Failed to share session:", error)
+    }
+  }
+
   // Reload history when path changes to /chat (new chat might have been created)
   useEffect(() => {
     if (pathname === '/chat' || pathname.startsWith('/chat/')) {
@@ -102,6 +117,10 @@ export function NavHistory() {
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
+                <DropdownMenuItem onClick={(e) => handleShare(item.id, e as any)}>
+                  <Share className="text-muted-foreground" />
+                  <span>Share Chat</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={(e) => handleDelete(item.id, e as any)}>
                   <Trash2 className="text-muted-foreground" />
                   <span>Delete Chat</span>

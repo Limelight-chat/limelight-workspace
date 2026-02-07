@@ -597,4 +597,133 @@ export const api = {
 
     return response.json()
   },
+
+  // Google Drive Integration APIs
+  async getGoogleAuthUrl() {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/google/auth-url`, {
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to get Google auth URL')
+    }
+
+    return response.json()
+  },
+
+  async getGoogleStatus() {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/google/status`, {
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to get Google status')
+    }
+
+    return response.json()
+  },
+
+  async disconnectGoogle() {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/google/disconnect`, {
+      method: 'POST',
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to disconnect Google')
+    }
+
+    return response.json()
+  },
+
+  async getGooglePickerConfig() {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/google/picker-config`, {
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to get picker config')
+    }
+
+    return response.json()
+  },
+
+  async importGoogleFiles(files: Array<{ file_id: string; mime_type: string; name: string }>) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/google/import`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ files }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to import Google files')
+    }
+
+    return response.json()
+  },
+
+  async getGoogleSyncedFiles() {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/google/files`, {
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to get synced files')
+    }
+
+    return response.json()
+  },
+
+  async removeGoogleSyncedFile(fileId: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/google/files/${fileId}`, {
+      method: 'DELETE',
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to remove synced file')
+    }
+
+    return response.json()
+  },
+
+  async triggerGoogleSync(fileId: string) {
+    const headers = await getAuthHeaders()
+
+    const response = await fetch(`${API_URL}/api/google/files/${fileId}/sync`, {
+      method: 'POST',
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to trigger sync')
+    }
+
+    return response.json()
+  },
 }
